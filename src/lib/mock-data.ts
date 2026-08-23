@@ -32,7 +32,14 @@ export type Review = {
   text: string;
 };
 
-export type Story = { name: string; image: string; self: boolean };
+export type Story = {
+  id: string;
+  restaurantId: string;
+  name: string;
+  image: string;
+  caption?: string;
+  createdAt?: unknown;
+};
 
 export type Offer = { title: string; code: string; bg: string; image: string };
 
@@ -331,12 +338,34 @@ export const foods: Food[] = [
 ];
 
 export const stories: Story[] = [
-  { name: "Your Story", image: "https://loremflickr.com/100/100/person?lock=999", self: true },
-  { name: "Kacchi Bhai", image: "https://loremflickr.com/100/100/food?lock=301", self: false },
-  { name: "Chillox", image: "https://loremflickr.com/100/100/food?lock=302", self: false },
-  { name: "Sultans Dine", image: "https://loremflickr.com/100/100/food?lock=303", self: false },
-  { name: "Pizza Hut", image: "https://loremflickr.com/100/100/food?lock=304", self: false },
-  { name: "Star Kabab", image: "https://loremflickr.com/100/100/food?lock=305", self: false },
+  {
+    id: "story-kacchi-bhai",
+    restaurantId: "kacchi-bhai",
+    name: "Kacchi Bhai",
+    image: "https://loremflickr.com/400/700/kacchi?lock=301",
+    caption: "Today's kacchi — slow cooked since dawn.",
+  },
+  {
+    id: "story-chillox",
+    restaurantId: "chillox",
+    name: "Chillox",
+    image: "https://loremflickr.com/400/700/burger?lock=302",
+    caption: "Fresh patties dropping at 6 PM.",
+  },
+  {
+    id: "story-sultans-dine",
+    restaurantId: "sultans-dine",
+    name: "Sultans Dine",
+    image: "https://loremflickr.com/400/700/biriyani?lock=303",
+    caption: "Jali kabab restocked.",
+  },
+  {
+    id: "story-star-kabab",
+    restaurantId: "star-kabab",
+    name: "Star Kabab",
+    image: "https://loremflickr.com/400/700/kebab?lock=305",
+    caption: "Charcoal grill is lit.",
+  },
 ];
 
 export const offers: Offer[] = [

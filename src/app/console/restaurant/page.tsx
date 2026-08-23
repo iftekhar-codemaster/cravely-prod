@@ -16,6 +16,7 @@ import { getImpersonation } from "@/components/ImpersonationBanner";
 import { getDb } from "@/lib/firebase";
 import type { Food } from "@/lib/data";
 import { ApplyWizard, AddDishWizard } from "@/components/console/Wizards";
+import StoryManager from "@/components/console/StoryManager";
 
 type Application = {
   id?: string;
@@ -27,7 +28,7 @@ type Application = {
   status: "pending" | "approved" | "rejected";
 };
 
-type Tab = "status" | "menu";
+type Tab = "status" | "menu" | "story";
 
 export default function RestaurantConsolePage() {
   const { user, profile, loading } = useAuth();
@@ -124,7 +125,7 @@ export default function RestaurantConsolePage() {
 
       {canManageMenu && (
         <div className="flex gap-2 mb-5">
-          {(["status", "menu"] as Tab[]).map((t) => (
+          {(["status", "menu", "story"] as Tab[]).map((t) => (
             <button
               key={t}
               onClick={() => setTab(t)}
@@ -132,7 +133,7 @@ export default function RestaurantConsolePage() {
                 tab === t ? "bg-primary text-white" : "border border-line bg-card"
               }`}
             >
-              {t === "status" ? "Listing" : `Menu${menu ? ` (${menu.length})` : ""}`}
+              {t === "status" ? "Listing" : t === "menu" ? `Menu${menu ? ` (${menu.length})` : ""}` : "Story"}
             </button>
           ))}
         </div>
@@ -190,6 +191,10 @@ export default function RestaurantConsolePage() {
             </ul>
           )}
         </section>
+      )}
+
+      {canManageMenu && tab === "story" && (
+        <StoryManager restaurantId={effRestaurantId!} />
       )}
 
       {adding && effRestaurantId && (

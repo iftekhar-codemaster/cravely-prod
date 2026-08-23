@@ -42,7 +42,11 @@ service cloud.firestore {
     }
     match /stories/{id} {
       allow read: if true;
-      allow write: if isAdmin();
+      allow create: if isAdmin() || ownsRestaurant(request.resource.data.restaurantId);
+      allow update: if isAdmin()
+        || (ownsRestaurant(resource.data.restaurantId)
+            && request.resource.data.restaurantId == resource.data.restaurantId);
+      allow delete: if isAdmin() || ownsRestaurant(resource.data.restaurantId);
     }
     match /offers/{id} {
       allow read: if true;
