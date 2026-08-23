@@ -172,6 +172,12 @@ export async function removePasskey(uid: string, passkeyId: string): Promise<voi
   });
 }
 
+/** Emergency: clear all passkeys (e.g. after moving to a new domain). Requires password re-auth by caller. */
+export async function resetPasskeys(uid: string): Promise<void> {
+  const db = getDb()!;
+  await updateDoc(doc(db, "adminSecurity", uid), { passkeys: [] });
+}
+
 // ---------- IP allowlist ----------
 
 export async function addAllowedIp(uid: string, ip: string): Promise<void> {

@@ -9,6 +9,7 @@ import {
   getAdminSecurity,
   ipMatchesAllowed,
   missingRequirements,
+  resetPasskeys,
   verifyPasskey,
 } from "@/lib/adminSecurity";
 
@@ -51,7 +52,34 @@ export default function ConsoleShell({ children }: { children: ReactNode }) {
   const pathname = usePathname() ?? "";
   const [state, setState] = useState<GateState>("loading");
   const [myIp, setMyIp] = useState("");
+  const [showRecovery, setShowRecovery] = useState(false);
+  const [recoveryPw, setRecoveryPw] = useState("");
+  const [recoveryBusy, setRecoveryBusy] = useState(false);
+  const [recoveryErr, setRecoveryErr] = useState<string | null>(null);
   const setupMode = pathname.startsWith("/console/admin/setup");
+
+  async function recoverWithPassword(e: React.FormEvent) {
+    e.preventDefault();
+    if (!user) return;
+    setRecoveryBusy(true);
+    setRecoveryErr(null);
+    try {
+      const { EmailAuthProvider, reauthenticateWithCredential } = await import(
+        "firebase/auth"
+      );
+      const cred = EmailAuthProvider.credential(user.email!, recoveryPw);
+      await reauthenticateWithCredential(user, cred);
+      await resetPasskeys(user.uid);
+      sessionStorage.removeItem("cravely:passkey-ok");
+      setShowRecovery(false);
+      setRecoveryPw("");
+      router.replace("/console/admin/setup");
+    } catch {
+      setRecoveryErr("Incorrect password.");
+    } finally {
+      setRecoveryBusy(false);
+    }
+  }
 
   const runGate = useCallback(async () => {
     if (!user || !profile) return;
@@ -128,12 +156,20 @@ export default function ConsoleShell({ children }: { children: ReactNode }) {
               : "Verifying your access…"}
           </p>
           {state === "passkey" && (
-            <button
-              onClick={() => void runGate()}
-              className="mt-6 text-xs text-text-light underline hover:text-primary"
-            >
-              Retry passkey prompt
-            </button>
+            <div className="mt-6 flex flex-col items-center gap-3">
+              <button
+                onClick={() => void runGate()}
+                className="text-xs text-text-light underline hover:text-primary"
+              >
+                Retry passkey prompt
+              </button>
+              <button
+                onClick={() => setShowRecovery(true)}
+                className="text-[11px] text-text-light hover:text-primary transition-colors"
+              >
+                Changed domain or lost the passkey? Recover with password →
+              </button>
+            </div>
           )}
         </div>
       );
@@ -182,7 +218,58 @@ export default function ConsoleShell({ children }: { children: ReactNode }) {
       );
     }
     return (
-      <div className="min-h-[70vh] flex items-start justify-center">{screen}</div>
+      <div className="min-h-[70vh] flex items-start justify-center">
+        {screen}
+        {showRecovery && (
+          <div
+            className="fixed inset-0 z-[80] bg-black/40 flex items-center justify-center p-4"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Passkey recovery"
+          >
+            <form
+              onSubmit={recoverWithPassword}
+              className="anim-fade-up w-full max-w-sm bg-white rounded-2xl p-5 shadow-xl"
+            >
+              <h3 className="font-extrabold mb-1">Passkey recovery</h3>
+              <p className="text-xs text-text-light leading-relaxed mb-4">
+                Passkeys only work on the domain they were created on. Confirm
+                your password to clear old passkeys and enroll a new one on this
+                domain.
+              </p>
+              {recoveryErr && (
+                <p className="mb-3 rounded-lg bg-red-50 px-3 py-2 text-xs text-primary">
+                  {recoveryErr}
+                </p>
+              )}
+              <input
+                type="password"
+                autoFocus
+                value={recoveryPw}
+                onChange={(e) => setRecoveryPw(e.target.value)}
+                placeholder="Account password"
+                required
+                className="w-full rounded-xl border border-line bg-card px-4 py-3 text-sm outline-none focus:border-primary"
+              />
+              <div className="flex gap-3 mt-4">
+                <button
+                  type="button"
+                  onClick={() => setShowRecovery(false)}
+                  className="flex-1 border border-line rounded-full py-2.5 font-semibold text-sm"
+                >
+                  Cancel
+                </button>
+                <button
+                  disabled={recoveryBusy}
+                  className="flex-[2] bg-primary text-white rounded-full py-2.5 font-semibold text-sm disabled:opacity-50"
+                >
+                  {recoveryBusy ? "Verifying…" : "Reset passkeys"}
+                </button>
+              </div>
+            </form>
+          </div>
+        )}
+      </div>
     );
   }
 

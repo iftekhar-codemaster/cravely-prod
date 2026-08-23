@@ -1,0 +1,10 @@
+{
+  "redirects": [
+    {
+      "source": "/:path*",
+      "has": [{ "type": "host", "value": "cravely-prod.vercel.app" }],
+      "destination": "https://cravely.zone.id/:path*",
+      "permanent": false
+    }
+  ]
+}
