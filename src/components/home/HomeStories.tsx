@@ -5,8 +5,6 @@ import { getStories, getAllRestaurants, type Story, type Restaurant } from "@/li
 import SmartImg from "@/components/SmartImg";
 import StoryViewer from "./StoryViewer";
 
-const VIEW_MS = 5000;
-
 export default function HomeStories() {
   const [stories, setStories] = useState<Story[] | null>(null);
   const [restaurants, setRestaurants] = useState<Restaurant[]>([]);
@@ -22,7 +20,7 @@ export default function HomeStories() {
     return () => clearTimeout(t);
   }, []);
 
-  if (!stories) {
+  if (stories === null) {
     return (
       <div className="px-4 flex gap-4 overflow-hidden">
         {[0, 1, 2, 3].map((i) => (
@@ -35,20 +33,23 @@ export default function HomeStories() {
     );
   }
 
-  if (stories.length === 0) return null;
+  // Drop legacy/malformed docs that predate the restaurant-linked model
+  const clean = stories.filter(
+    (s): s is Story & { restaurantId: string } =>
+      typeof s.restaurantId === "string" && s.restaurantId.length > 0,
+  );
+  if (clean.length === 0) return null;
 
   const logoOf = (restaurantId: string) =>
     restaurants.find((r) => r.id === restaurantId)?.logo ??
-    `https://loremflickr.com/100/100/food?lock=${restaurantId.length}`;
+    `https://loremflickr.com/100/100/food?lock=${(restaurantId.length || 1) % 97}`;
 
-  const live = restaurants.find(
-    (r) => r.id === stories[openAt!]?.restaurantId,
-  );
+  const live = restaurants.find((r) => r.id === clean[openAt!]?.restaurantId);
 
   return (
     <>
       <div className="px-4 flex gap-4 overflow-x-auto no-scrollbar pb-1">
-        {stories.map((story, i) => (
+        {clean.map((story, i) => (
           <button
             key={story.id}
             onClick={() => setOpenAt(i)}
@@ -64,7 +65,7 @@ export default function HomeStories() {
                 imgClassName="w-full h-full object-cover"
               />
             </span>
-            <span className="text-xs font-medium w-[75px] text-center truncate text-left">
+            <span className="text-xs font-medium w-[75px] text-center truncate">
               {story.name}
             </span>
           </button>
@@ -73,7 +74,7 @@ export default function HomeStories() {
 
       {openAt !== null && (
         <StoryViewer
-          stories={stories}
+          stories={clean}
           startIndex={openAt}
           logo={live?.logo ?? ""}
           onClose={() => setOpenAt(null)}
@@ -82,5 +83,3 @@ export default function HomeStories() {
     </>
   );
 }
-
-export { VIEW_MS };
