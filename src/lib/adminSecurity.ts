@@ -141,25 +141,31 @@ export async function enrollPasskey(uid: string, email: string): Promise<Passkey
 
 /**
  * Verifies the user holds one of their enrolled passkeys.
- * Returns true when an enrolled credential was used.
+ * Never throws — returns false on any failure (wrong domain, cancel, no key).
  */
 export async function verifyPasskey(uid: string): Promise<boolean> {
-  const security = await getAdminSecurity(uid);
-  if (security.passkeys.length === 0) return false;
-  const assertion = (await navigator.credentials.get({
-    publicKey: {
-      challenge: crypto.getRandomValues(new Uint8Array(32)),
-      allowCredentials: security.passkeys.map((p) => ({
-        id: fromBase64Url(p.id) as unknown as BufferSource,
-        type: "public-key",
-      })),
-      userVerification: "required",
-      timeout: 60000,
-    },
-  })) as PublicKeyCredential | null;
-  if (!assertion) return false;
-  const used = toBase64Url(assertion.rawId);
-  return security.passkeys.some((p) => p.id === used);
+  try {
+    const security = await getAdminSecurity(uid);
+    if (security.passkeys.length === 0) return false;
+    const assertion = (await navigator.credentials.get({
+      publicKey: {
+        challenge: crypto.getRandomValues(new Uint8Array(32)),
+        allowCredentials: security.passkeys.map((p) => ({
+          id: fromBase64Url(p.id) as unknown as BufferSource,
+          type: "public-key",
+        })),
+        userVerification: "required",
+        timeout: 60000,
+      },
+    })) as PublicKeyCredential | null;
+    if (!assertion) return false;
+    const used = toBase64Url(assertion.rawId);
+    return security.passkeys.some((p) => p.id === used);
+  } catch (err) {
+    // NotAllowedError (no credential for this RP/domain), cancel, timeout…
+    console.warn("[cravely] passkey verify failed:", err);
+    return false;
+  }
 }
 
 export async function removePasskey(uid: string, passkeyId: string): Promise<void> {
