@@ -10,9 +10,9 @@ import { isAdminRole, ROLE_LABELS } from "@/lib/user";
 import { getLiked, getPackage } from "@/lib/store";
 
 const ROLE_STYLES = {
-  user: "bg-blue-100 text-blue-700",
-  restaurant: "bg-purple-100 text-purple-700",
-  admin: "bg-amber-100 text-amber-700",
+  user: "bg-blue-50 text-blue-600",
+  restaurant: "bg-purple-50 text-purple-600",
+  admin: "bg-amber-50 text-amber-600",
   super_admin: "bg-gray-900 text-white",
 } as const;
 
@@ -42,62 +42,60 @@ export default function ProfilePage() {
 
   async function saveName() {
     const auth = getFirebaseAuth();
-    if (!auth || !auth.currentUser || !nameDraft.trim()) return;
+    if (!auth?.currentUser || !nameDraft.trim()) return;
     setSavingName(true);
     try {
       await updateProfile(auth.currentUser, { displayName: nameDraft.trim() });
-      // keep Firestore profile in sync
-      const { doc, updateDoc } = await import("firebase/firestore");
-      const { getDb } = await import("@/lib/firebase");
+      const [{ doc, updateDoc }, { getDb }] = await Promise.all([
+        import("firebase/firestore"),
+        import("@/lib/firebase"),
+      ]);
       const db = getDb();
       if (db) {
         await updateDoc(doc(db, "users", auth.currentUser.uid), {
           displayName: nameDraft.trim(),
         });
       }
-      window.location.reload(); // simplest way to propagate to AuthProvider
+      window.location.reload();
     } catch {
       setSavingName(false);
       setEditing(false);
     }
   }
 
-  async function handleSignOut() {
-    await signOut();
-    router.refresh();
-  }
-
-  /* ---------- Signed-out state ---------- */
+  /* ---------- Signed out ---------- */
   if (!user) {
     return (
-      <div className="px-4 pt-6">
-        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-primary via-[#ff6b81] to-[#ff9a76] p-6 text-white shadow-lg mb-5">
-          <i
-            className="fa-solid fa-utensils absolute -right-4 -bottom-4 text-[90px] opacity-15 rotate-12"
-            aria-hidden
-          />
-          <h1 className="text-2xl font-extrabold leading-tight">Welcome to Cravely</h1>
-          <p className="mt-1.5 text-sm opacity-90 max-w-[240px]">
-            Sign in to like dishes, build packages and order from places near you.
+      <div className="px-6 pt-16 pb-10">
+        <div className="anim-fade-up">
+          <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-primary to-[#ff9a76] text-white flex items-center justify-center text-2xl shadow-lg rotate-3">
+            <i className="fa-solid fa-utensils" aria-hidden />
+          </div>
+          <h1 className="text-[26px] font-extrabold leading-snug mt-5">
+            Your table is
+            <br />
+            waiting.
+          </h1>
+          <p className="text-sm text-text-light mt-2 leading-relaxed max-w-[260px]">
+            Sign in to save dishes, build packages and see what&apos;s good
+            around Thakurgaon.
           </p>
         </div>
 
         <Link
           href="/login"
-          className="block w-full text-center bg-primary text-white py-3.5 rounded-full font-semibold shadow-[0_4px_10px_rgba(255,71,87,0.3)] hover:-translate-y-0.5 transition-transform"
+          className="anim-fade-up mt-7 flex items-center justify-between w-full bg-primary text-white rounded-2xl px-5 py-4 font-semibold pressable shadow-[0_6px_18px_rgba(255,71,87,0.35)]"
+          style={{ animationDelay: "90ms" }}
         >
-          <i className="fa-solid fa-right-to-bracket mr-2" aria-hidden />
-          Login / Create account
+          Sign in or create account
+          <i className="fa-solid fa-arrow-right" aria-hidden />
         </Link>
 
-        <div className="grid grid-cols-2 gap-3 mt-5">
-          <QuickCard href="/console/restaurant" icon="fa-store" title="Own a restaurant?" desc="Apply for verification" />
-          <QuickCard href="/packages" icon="fa-box-open" title="Package Builder" desc="Compare bundle prices nearby" />
+        <div className="mt-8 rounded-2xl border border-line bg-card divide-y divide-line anim-fade-up" style={{ animationDelay: "160ms" }}>
+          <QuietRow href="/console/restaurant" icon="fa-store" title="Own a restaurant?" desc="Apply for verification" />
+          <QuietRow href="/packages" icon="fa-box-open" title="Package Builder" desc="Compare bundle prices nearby" />
+          <QuietRow href="/liked" icon="fa-heart" title="Liked dishes" desc="Your shortlist" />
         </div>
-
-        <Section title="More">
-          <RowLink href="/liked" icon="fa-heart" label="Liked dishes" />
-        </Section>
       </div>
     );
   }
@@ -105,177 +103,212 @@ export default function ProfilePage() {
   const role = profile?.role ?? "user";
   const displayName = user.displayName ?? user.email?.split("@")[0] ?? "Guest";
 
-  /* ---------- Signed-in state ---------- */
+  /* ---------- Signed in ---------- */
   return (
-    <div className="pb-6">
-      {/* Hero */}
-      <div className="relative bg-gradient-to-br from-primary via-[#ff6b81] to-[#ff9a76] px-5 pt-8 pb-14 text-white">
-        <div className="absolute top-4 right-4 flex items-center gap-2">
-          <span className={`text-[10px] font-bold uppercase px-2.5 py-1 rounded-full ${ROLE_STYLES[role]}`}>
-            {ROLE_LABELS[role]}
-          </span>
-        </div>
-        <p className="text-xs opacity-80">My account</p>
-      </div>
-
-      <div className="px-4 -mt-10">
-        {/* Identity card */}
-        <section className="rounded-2xl border border-line bg-card shadow-card p-5 relative">
-          <div className="flex items-center gap-4">
-            {user.photoURL ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={user.photoURL}
-                alt=""
-                className="w-16 h-16 rounded-full object-cover ring-4 ring-white shadow-md"
-              />
-            ) : (
-              <div className="w-16 h-16 rounded-full bg-primary/10 text-primary flex items-center justify-center text-2xl font-extrabold uppercase ring-4 ring-white shadow-md">
-                {displayName.charAt(0)}
-              </div>
-            )}
-            <div className="flex-1 min-w-0">
-              {editing ? (
-                <div className="flex items-center gap-2">
-                  <input
-                    autoFocus
-                    value={nameDraft}
-                    onChange={(e) => setNameDraft(e.target.value)}
-                    onKeyDown={(e) => e.key === "Enter" && void saveName()}
-                    className="flex-1 min-w-0 rounded-lg border border-line px-2.5 py-1.5 text-sm outline-none focus:border-primary"
-                  />
-                  <button
-                    onClick={() => void saveName()}
-                    disabled={savingName}
-                    aria-label="Save name"
-                    className="w-8 h-8 rounded-full bg-primary text-white flex-shrink-0 disabled:opacity-50"
-                  >
-                    <i className={`fa-solid ${savingName ? "fa-spinner fa-spin" : "fa-check"} text-xs`} aria-hidden />
-                  </button>
-                </div>
-              ) : (
+    <div className="pb-8">
+      {/* Identity block — asymmetric, airy */}
+      <header className="px-6 pt-10 anim-fade-up">
+        <div className="flex items-start gap-4">
+          {user.photoURL ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={user.photoURL}
+              alt=""
+              className="w-20 h-20 rounded-[22px] object-cover ring-1 ring-black/5 shadow-md -rotate-2"
+            />
+          ) : (
+            <div className="w-20 h-20 rounded-[22px] bg-gradient-to-br from-primary to-[#ff8f70] text-white flex items-center justify-center text-3xl font-extrabold uppercase shadow-md -rotate-2 select-none">
+              {displayName.charAt(0)}
+            </div>
+          )}
+          <div className="pt-1 min-w-0">
+            {editing ? (
+              <div className="flex items-center gap-2">
+                <input
+                  autoFocus
+                  value={nameDraft}
+                  onChange={(e) => setNameDraft(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && void saveName()}
+                  className="w-40 rounded-lg border border-line px-2 py-1 text-lg font-bold outline-none focus:border-primary"
+                />
                 <button
-                  onClick={() => {
-                    setNameDraft(displayName);
-                    setEditing(true);
-                  }}
-                  className="group flex items-center gap-2 max-w-full"
+                  onClick={() => void saveName()}
+                  disabled={savingName}
+                  aria-label="Save name"
+                  className="w-7 h-7 rounded-full bg-primary text-white flex-shrink-0 disabled:opacity-50"
                 >
-                  <h1 className="text-xl font-extrabold truncate">{displayName}</h1>
-                  <i
-                    className="fa-solid fa-pen text-[11px] text-text-light group-hover:text-primary transition-colors flex-shrink-0"
-                    aria-label="Edit name"
-                  />
+                  <i className={`fa-solid ${savingName ? "fa-spinner fa-spin" : "fa-check"} text-[10px]`} aria-hidden />
                 </button>
-              )}
-              <p className="text-xs text-text-light truncate mt-0.5">{user.email}</p>
-              <div className="flex items-center gap-2 mt-1.5">
-                {user.emailVerified ? (
-                  <span className="text-[10px] font-semibold text-green-600">
-                    <i className="fa-solid fa-circle-check mr-1" aria-hidden />
-                    Verified email
-                  </span>
-                ) : (
-                  <span className="text-[10px] font-semibold text-amber-500">
-                    <i className="fa-solid fa-circle-exclamation mr-1" aria-hidden />
-                    Email not verified
-                  </span>
-                )}
-                {memberSince && (
-                  <span className="text-[10px] text-text-light">· since {memberSince}</span>
-                )}
               </div>
+            ) : (
+              <button onClick={() => { setNameDraft(displayName); setEditing(true); }} className="group flex items-center gap-2 max-w-full">
+                <h1 className="text-2xl font-extrabold truncate">{displayName}</h1>
+                <i className="fa-solid fa-pen text-[11px] text-text-light group-hover:text-primary transition-colors flex-shrink-0" aria-label="Edit name" />
+              </button>
+            )}
+            <p className="text-xs text-text-light truncate mt-0.5">{user.email}</p>
+            <div className="flex items-center gap-2 mt-2 flex-wrap">
+              <span className={`text-[10px] font-bold uppercase tracking-wide px-2 py-1 rounded-lg ${ROLE_STYLES[role]}`}>
+                {ROLE_LABELS[role]}
+              </span>
+              {memberSince && (
+                <span className="text-[10px] text-text-light">
+                  <i className="fa-regular fa-calendar mr-1" aria-hidden />
+                  {memberSince}
+                </span>
+              )}
+              {!user.emailVerified && (
+                <span className="text-[10px] font-semibold text-amber-500">
+                  <i className="fa-solid fa-circle-exclamation mr-1" aria-hidden />
+                  unverified
+                </span>
+              )}
             </div>
           </div>
+        </div>
+      </header>
 
-          {/* Stats */}
-          <div className="grid grid-cols-3 divide-x divide-line mt-5 pt-4 border-t border-line text-center">
-            <Stat value={stats.liked} label="Liked" icon="fa-heart" />
-            <Stat value={stats.package} label="In package" icon="fa-box-open" />
-            <Stat
-              value={role === "restaurant" ? (profile?.restaurantId ? "Live" : "Pending") : "—"}
-              label={role === "restaurant" ? "Listing" : "Orders"}
-              icon={role === "restaurant" ? "fa-store" : "fa-receipt"}
-              isText
-            />
-          </div>
-        </section>
+      {/* Stat pills */}
+      <div className="px-6 mt-6 flex gap-2 overflow-x-auto no-scrollbar anim-fade-up" style={{ animationDelay: "80ms" }}>
+        <StatPill icon="fa-heart" value={stats.liked} label="Liked" href="/liked" />
+        <StatPill icon="fa-box-open" value={stats.package} label="In package" href="/packages" />
+        {role === "restaurant" && (
+          <StatPill
+            icon="fa-store"
+            value={profile?.restaurantId ? "Live" : "Pending"}
+            label={profile?.restaurantId ? "Listing" : "Review"}
+            href={profile?.restaurantId ? `/restaurants/${profile.restaurantId}` : "/console/restaurant"}
+          />
+        )}
+        <StatPill icon="fa-shield-halved" value="—" label="Privacy" href="/maps" muted />
+      </div>
 
-        {/* Role consoles */}
+      {/* Grouped lists */}
+      <div className="px-6 mt-7 space-y-6">
         {(isAdminRole(role) || role === "restaurant") && (
-          <Section title="Consoles">
+          <Group title="Workspace">
             {isAdminRole(role) && (
-              <RowLink
-                href="/console/admin"
-                icon="fa-user-shield"
-                label="Admin Console"
-                accent
-              />
+              <Row href="/console/admin" icon="fa-user-shield" title="Admin console" desc="Users · applications · security" accent />
             )}
             {role === "restaurant" && (
-              <RowLink
-                href="/console/restaurant"
-                icon="fa-store"
-                label="Restaurant Console"
-                accent
-              />
+              <Row href="/console/restaurant" icon="fa-store" title="Restaurant studio" desc="Your listing & menu" accent />
             )}
-          </Section>
+          </Group>
         )}
 
-        <Section title="Activity">
-          <RowLink href="/liked" icon="fa-heart" label="Liked dishes" badge={stats.liked || undefined} />
-          <RowLink href="/packages" icon="fa-box-open" label="My package" badge={stats.package || undefined} />
-          <RowLink href="/maps" icon="fa-map-location-dot" label="Nearby map" />
-        </Section>
+        <Group title="Your activity">
+          <Row href="/liked" icon="fa-heart" title="Liked dishes" badge={stats.liked} />
+          <Row href="/packages" icon="fa-box-open" title="My package" badge={stats.package} />
+          <Row href="/search" icon="fa-magnifying-glass" title="Find something new" />
+        </Group>
 
-        <Section title="Account">
-          <RowLink href="/login" icon="fa-google" label="Connected sign-in methods" muted />
-          <button
-            onClick={() => void handleSignOut()}
-            className="w-full flex items-center gap-3 rounded-xl border border-line bg-card p-4 shadow-card text-left hover:text-primary transition-colors"
-          >
-            <i className="fa-solid fa-right-from-bracket w-5 text-center" aria-hidden />
-            <span className="text-sm font-semibold">Sign out</span>
-          </button>
-        </Section>
+        <Group title="Account">
+          <Row href="#" icon="fa-bell" title="Notifications" desc="Coming soon" muted disabled />
+          <Row href="#" icon="fa-circle-question" title="Help & support" desc="Coming soon" muted disabled />
+          <SignOutRow onSignOut={() => void signOut().then(() => router.refresh())} />
+        </Group>
+
+        <p className="text-center text-[10px] text-text-light pt-2">
+          Cravely · Thakurgaon {memberSince ? `· with you since ${memberSince}` : ""}
+        </p>
       </div>
     </div>
   );
 }
 
-function Stat({
+function StatPill({
+  icon,
   value,
   label,
-  icon,
-  isText,
+  href,
+  muted,
 }: {
+  icon: string;
   value: number | string;
   label: string;
-  icon: string;
-  isText?: boolean;
+  href: string;
+  muted?: boolean;
 }) {
   return (
-    <div>
-      <div className="font-extrabold text-lg flex items-center justify-center gap-1.5">
-        {!isText && <i className={`fa-solid ${icon} text-[11px] text-text-light`} aria-hidden />}
-        {value}
-      </div>
-      <div className="text-[11px] text-text-light">{label}</div>
-    </div>
+    <Link
+      href={href}
+      className={`pressable flex items-center gap-2 whitespace-nowrap rounded-full border border-line bg-card pl-3 pr-4 py-2 ${
+        muted ? "opacity-60" : ""
+      }`}
+    >
+      <i className={`fa-solid ${icon} text-primary text-xs`} aria-hidden />
+      <span className="font-extrabold text-sm">{value}</span>
+      <span className="text-xs text-text-light">{label}</span>
+    </Link>
   );
 }
 
-function Section({ title, children }: { title: string; children: React.ReactNode }) {
+function Group({ title, children }: { title: string; children: React.ReactNode }) {
   return (
+    <section>
+      <h2 className="text-[11px] font-bold uppercase tracking-widest text-text-light mb-2 px-1">
+        {title}
+      </h2>
+      <div className="rounded-2xl border border-line bg-card divide-y divide-line overflow-hidden">
+        {children}
+      </div>
+    </section>
+  );
+}
+
+function Row({
+  href,
+  icon,
+  title,
+  desc,
+  badge,
+  accent,
+  muted,
+  disabled,
+}: {
+  href: string;
+  icon: string;
+  title: string;
+  desc?: string;
+  badge?: number;
+  accent?: boolean;
+  muted?: boolean;
+  disabled?: boolean;
+}) {
+  const inner = (
     <>
-      <h2 className="font-bold text-sm mt-6 mb-3">{title}</h2>
-      <div className="space-y-3">{children}</div>
+      <span className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 ${
+        accent ? "bg-primary text-white" : muted ? "bg-gray-100 text-text-light" : "bg-primary/8 text-primary"
+      }`}>
+        <i className={`fa-solid ${icon} text-sm`} aria-hidden />
+      </span>
+      <span className="flex-1 min-w-0">
+        <span className={`block text-sm font-semibold truncate ${muted ? "text-text-light" : ""}`}>
+          {title}
+          {badge ? (
+            <span className="ml-2 bg-primary/10 text-primary text-[10px] font-bold px-1.5 py-0.5 rounded-full align-middle">
+              {badge}
+            </span>
+          ) : null}
+        </span>
+        {desc && <span className="block text-[11px] text-text-light truncate">{desc}</span>}
+      </span>
+      {!disabled && <i className="fa-solid fa-chevron-right text-[10px] text-text-light" aria-hidden />}
     </>
   );
+  const cls =
+    "w-full flex items-center gap-3 px-4 py-3 text-left transition-colors " +
+    (disabled ? "opacity-60 cursor-default" : "hover:bg-background");
+  return disabled ? (
+    <div className={cls}>{inner}</div>
+  ) : (
+    <Link href={href} className={`${cls} pressable`}>
+      {inner}
+    </Link>
+  );
 }
 
-function QuickCard({
+function QuietRow({
   href,
   icon,
   title,
@@ -287,51 +320,27 @@ function QuickCard({
   desc: string;
 }) {
   return (
-    <Link
-      href={href}
-      className="rounded-xl border border-line bg-card p-4 shadow-card hover:-translate-y-0.5 transition-transform"
-    >
-      <span className="w-9 h-9 rounded-lg bg-primary/10 text-primary flex items-center justify-center mb-2">
-        <i className={`fa-solid ${icon}`} aria-hidden />
+    <Link href={href} className="flex items-center gap-3 px-4 py-3.5 hover:bg-background transition-colors">
+      <i className={`fa-solid ${icon} text-primary w-5 text-center`} aria-hidden />
+      <span className="flex-1 min-w-0">
+        <span className="block text-sm font-semibold">{title}</span>
+        <span className="block text-[11px] text-text-light truncate">{desc}</span>
       </span>
-      <div className="font-bold text-sm leading-tight">{title}</div>
-      <p className="text-[11px] text-text-light mt-0.5 leading-snug">{desc}</p>
+      <i className="fa-solid fa-chevron-right text-[10px] text-text-light" aria-hidden />
     </Link>
   );
 }
 
-function RowLink({
-  href,
-  icon,
-  label,
-  badge,
-  accent,
-  muted,
-}: {
-  href: string;
-  icon: string;
-  label: string;
-  badge?: number;
-  accent?: boolean;
-  muted?: boolean;
-}) {
+function SignOutRow({ onSignOut }: { onSignOut: () => void }) {
   return (
-    <Link
-      href={href}
-      className={`flex items-center gap-3 rounded-xl border bg-card p-4 shadow-card hover:text-primary transition-colors ${
-        accent ? "border-primary/40" : "border-line"
-      }`}
+    <button
+      onClick={onSignOut}
+      className="w-full flex items-center gap-3 px-4 py-3 hover:bg-red-50/60 transition-colors group"
     >
-      <i className={`${icon.startsWith("fa-google") ? `${icon}` : `fa-solid ${icon}`} w-5 text-center${accent ? " text-primary" : ""}`} aria-hidden />
-      <span className={`text-sm font-medium flex-1 ${muted ? "text-text-light" : ""}`}>
-        {label}
+      <span className="w-9 h-9 rounded-xl bg-red-50 text-red-500 flex items-center justify-center flex-shrink-0 group-hover:bg-red-100 transition-colors">
+        <i className="fa-solid fa-right-from-bracket text-sm" aria-hidden />
       </span>
-      {badge !== undefined && (
-        <span className="bg-primary text-white text-[10px] font-bold px-2 py-0.5 rounded-full">
-          {badge}
-        </span>
-      )}
-      <i className="fa-solid fa-chevron-right text-[10px] text-text-light" aria-hidden />
-    </Link>
+      <span className="text-sm font-semibold text-red-500">Sign out</span>
+    </button>
   );
 }

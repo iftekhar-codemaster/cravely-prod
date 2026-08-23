@@ -5,14 +5,17 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   collection,
+  deleteDoc,
+  doc,
   getDocs,
   query,
-  serverTimestamp,
   where,
-  addDoc,
 } from "firebase/firestore";
 import { useAuth } from "@/components/AuthProvider";
+import { getImpersonation } from "@/components/ImpersonationBanner";
 import { getDb } from "@/lib/firebase";
+import type { Food } from "@/lib/data";
+import { ApplyWizard, AddDishWizard } from "@/components/console/Wizards";
 
 type Application = {
   id?: string;
@@ -24,27 +27,38 @@ type Application = {
   status: "pending" | "approved" | "rejected";
 };
 
+type Tab = "status" | "menu";
+
 export default function RestaurantConsolePage() {
   const { user, profile, loading } = useAuth();
   const router = useRouter();
+  const [as] = useState(() => getImpersonation());
+
+  const effRestaurantId =
+    as?.role === "restaurant" ? as.restaurantId : profile?.restaurantId;
+  const canManageMenu =
+    Boolean(effRestaurantId) &&
+    (profile?.role === "super_admin" || as?.role === "restaurant" || profile?.role === "restaurant");
+
   const [app, setApp] = useState<Application | null>(null);
   const [loadedApp, setLoadedApp] = useState(false);
-  const [form, setForm] = useState({ name: "", cuisine: "", address: "" });
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [tab, setTab] = useState<Tab>("status");
+  const [menu, setMenu] = useState<Food[] | null>(null);
+  const [adding, setAdding] = useState(false);
 
   const loadMyApplication = useCallback(async () => {
     if (!user) return;
     const db = getDb()!;
+    const targetUid = as?.uid ?? user.uid;
     const snap = await getDocs(
-      query(collection(db, "applications"), where("uid", "==", user.uid)),
+      query(collection(db, "applications"), where("uid", "==", targetUid)),
     );
     if (!snap.empty) {
       const d = snap.docs[0];
       setApp({ id: d.id, ...(d.data() as Omit<Application, "id">) });
     }
     setLoadedApp(true);
-  }, [user]);
+  }, [user, as]);
 
   useEffect(() => {
     if (loading) return;
@@ -62,134 +76,179 @@ export default function RestaurantConsolePage() {
     return () => clearTimeout(t);
   }, [loading, user, router, loadMyApplication]);
 
-  async function submit(e: React.FormEvent) {
-    e.preventDefault();
-    if (!user || !form.name.trim()) return;
-    setBusy(true);
-    setError(null);
-    try {
-      const db = getDb()!;
-      await addDoc(collection(db, "applications"), {
-        uid: user.uid,
-        email: user.email ?? "",
-        name: form.name.trim(),
-        cuisine: form.cuisine.trim(),
-        address: form.address.trim(),
-        status: "pending",
-        createdAt: serverTimestamp(),
-      });
-      await loadMyApplication();
-    } catch (err) {
-      console.warn(err);
-      setError("Could not submit application. Try again.");
-    } finally {
-      setBusy(false);
-    }
+  const loadMenu = useCallback(async () => {
+    if (!effRestaurantId) return;
+    const db = getDb()!;
+    const snap = await getDocs(
+      query(collection(db, "foods"), where("restaurantId", "==", effRestaurantId)),
+    );
+    const rows = snap.docs.map((d) => ({ id: d.id, ...(d.data() as object) })) as Food[];
+    rows.sort((a, b) => a.name.localeCompare(b.name));
+    setMenu(rows);
+  }, [effRestaurantId]);
+
+  useEffect(() => {
+    if (tab !== "menu" || !canManageMenu) return;
+    const t = setTimeout(() => void loadMenu().catch(() => setMenu([])), 0);
+    return () => clearTimeout(t);
+  }, [tab, canManageMenu, loadMenu]);
+
+  async function deleteDish(id: string) {
+    await deleteDoc(doc(getDb()!, "foods", id));
+    await loadMenu();
   }
 
   if (loading || !loadedApp) {
     return (
       <div className="px-4 pt-6">
-        <div className="h-40 rounded-xl bg-gray-100 animate-pulse" />
+        <div className="h-40 rounded-xl skel" />
       </div>
     );
   }
 
-  const isRestaurant = profile?.role === "restaurant";
-
   return (
     <div className="px-4 pt-6">
-      <div className="flex items-center gap-3 mb-5">
-        <span className="w-11 h-11 rounded-xl bg-primary/10 text-primary flex items-center justify-center text-lg">
+      <div className="flex items-center gap-3 mb-5 anim-fade-up">
+        <span className="w-11 h-11 rounded-2xl bg-gradient-to-br from-primary to-[#ff8f70] text-white flex items-center justify-center text-lg shadow-md -rotate-3">
           <i className="fa-solid fa-store" aria-hidden />
         </span>
         <div>
-          <h1 className="text-lg font-extrabold leading-tight">Restaurant Console</h1>
+          <h1 className="text-lg font-extrabold leading-tight">
+            {as ? as.name : "Restaurant Studio"}
+          </h1>
           <p className="text-xs text-text-light">
-            List your restaurant on Cravely
+            {as ? `Super Admin · managing ${as.email}` : "Your listing & menu on Cravely"}
           </p>
         </div>
       </div>
 
-      {/* Already an approved restaurant */}
-      {isRestaurant && profile?.restaurantId && (
-        <section className="rounded-xl border border-green-200 bg-green-50 p-4 mb-5">
-          <div className="flex items-center gap-2 font-bold text-sm text-green-700">
-            <i className="fa-solid fa-circle-check" aria-hidden />
-            Your listing is live & verified
-          </div>
-          <Link
-            href={`/restaurants/${profile.restaurantId}`}
-            className="mt-3 inline-block bg-green-600 text-white text-xs font-bold px-4 py-2 rounded-full"
-          >
-            View public page →
-          </Link>
-          <p className="text-[11px] text-green-700 mt-2">
-            Menu management is coming soon. Contact the admin to update dishes.
-          </p>
-        </section>
+      {canManageMenu && (
+        <div className="flex gap-2 mb-5">
+          {(["status", "menu"] as Tab[]).map((t) => (
+            <button
+              key={t}
+              onClick={() => setTab(t)}
+              className={`text-xs font-bold px-4 py-2 rounded-full transition-colors ${
+                tab === t ? "bg-primary text-white" : "border border-line bg-card"
+              }`}
+            >
+              {t === "status" ? "Listing" : `Menu${menu ? ` (${menu.length})` : ""}`}
+            </button>
+          ))}
+        </div>
       )}
 
-      {/* Application status */}
-      {app && (
-        <section className="rounded-xl border border-line bg-card p-4 shadow-card mb-6">
-          <h2 className="font-bold text-sm mb-1">{app.name}</h2>
-          <p className="text-xs text-text-light mb-3">
-            {app.cuisine} · {app.address}
-          </p>
-          {app.status === "pending" && (
-            <div className="flex items-center gap-2 text-xs font-semibold text-amber-600 bg-amber-50 rounded-lg p-2.5">
-              <i className="fa-solid fa-hourglass-half animate-pulse" aria-hidden />
-              Pending review — an admin will verify your restaurant soon.
-            </div>
-          )}
-          {app.status === "rejected" && (
-            <div className="flex items-center gap-2 text-xs font-semibold text-red-500 bg-red-50 rounded-lg p-2.5">
-              <i className="fa-solid fa-circle-xmark" aria-hidden />
-              Application rejected. Contact the admin for details.
-            </div>
-          )}
-        </section>
+      {(!canManageMenu || tab === "status") && (
+        <StatusPanel app={app} isLive={Boolean(effRestaurantId)} />
       )}
 
-      {/* Apply form */}
-      {!isRestaurant && !app && (
-        <form onSubmit={submit} className="space-y-4">
-          <div className="rounded-xl border border-dashed border-line p-4 text-xs text-text-light leading-relaxed">
-            <i className="fa-solid fa-circle-info mr-1.5" aria-hidden />
-            Admins verify every application before your restaurant goes live.
-          </div>
-          {error && (
-            <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-primary">{error}</p>
-          )}
-          <input
-            required
-            placeholder="Restaurant name"
-            value={form.name}
-            onChange={(e) => setForm({ ...form, name: e.target.value })}
-            className="w-full rounded-xl border border-line bg-card px-4 py-3 text-sm outline-none focus:border-primary"
-          />
-          <input
-            placeholder="Cuisine (e.g. Biryani, Fast Food)"
-            value={form.cuisine}
-            onChange={(e) => setForm({ ...form, cuisine: e.target.value })}
-            className="w-full rounded-xl border border-line bg-card px-4 py-3 text-sm outline-none focus:border-primary"
-          />
-          <textarea
-            rows={2}
-            placeholder="Full address"
-            value={form.address}
-            onChange={(e) => setForm({ ...form, address: e.target.value })}
-            className="w-full rounded-xl border border-line bg-card px-4 py-3 text-sm outline-none focus:border-primary resize-none"
-          />
+      {canManageMenu && tab === "menu" && (
+        <section>
           <button
-            disabled={busy}
-            className="w-full bg-primary text-white py-3 rounded-full font-semibold disabled:opacity-50 hover:shadow-[0_4px_10px_rgba(255,71,87,0.3)] transition-shadow"
+            onClick={() => setAdding(true)}
+            className="anim-pop w-full bg-primary text-white rounded-full py-3 font-semibold text-sm pressable shadow-[0_4px_12px_rgba(255,71,87,0.3)]"
           >
-            {busy ? "Submitting…" : "Apply for verification"}
+            <i className="fa-solid fa-plus mr-2" aria-hidden />
+            Add a dish
           </button>
-        </form>
+
+          {!menu ? (
+            <div className="space-y-3 mt-5">
+              {[0, 1].map((i) => (
+                <div key={i} className="h-16 rounded-xl skel" />
+              ))}
+            </div>
+          ) : menu.length === 0 ? (
+            <p className="text-sm text-text-light text-center py-8">
+              No dishes yet — publish your first one above.
+            </p>
+          ) : (
+            <ul className="mt-5 space-y-3 pb-24">
+              {menu.map((f) => (
+                <li
+                  key={f.id}
+                  className="flex items-center gap-3 rounded-xl border border-line bg-card p-3 shadow-card"
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={f.image} alt="" loading="lazy" className="w-12 h-12 rounded-lg object-cover flex-shrink-0" />
+                  <div className="flex-1 min-w-0">
+                    <Link href={`/product/${f.id}`} className="text-sm font-semibold truncate block hover:text-primary">
+                      {f.name}
+                    </Link>
+                    <p className="text-xs text-text-light">{f.category}</p>
+                  </div>
+                  <span className="font-bold text-sm">৳{f.price}</span>
+                  <button
+                    onClick={() => void deleteDish(f.id).catch(() => alert("Delete failed"))}
+                    aria-label={`Delete ${f.name}`}
+                    className="w-7 h-7 rounded-full bg-background text-text-light hover:text-red-500 transition-colors"
+                  >
+                    <i className="fa-solid fa-trash text-xs" aria-hidden />
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
+      )}
+
+      {adding && effRestaurantId && (
+        <AddDishWizard
+          restaurantId={effRestaurantId}
+          onClose={() => setAdding(false)}
+          onAdded={() => {
+            setAdding(false);
+            void loadMenu();
+          }}
+        />
       )}
     </div>
   );
+}
+
+function StatusPanel({
+  app,
+  isLive,
+}: {
+  app: Application | null;
+  isLive: boolean;
+}) {
+  if (isLive) {
+    return (
+      <section className="rounded-2xl border border-green-200 bg-green-50 p-5 anim-fade-up">
+        <div className="flex items-center gap-2 font-bold text-sm text-green-700">
+          <i className="fa-solid fa-circle-check" aria-hidden />
+          Your listing is live & verified
+        </div>
+        <p className="text-xs text-green-700 mt-1.5">
+          Dishes you publish appear instantly across Cravely.
+        </p>
+      </section>
+    );
+  }
+
+  if (app) {
+    return (
+      <section className="rounded-2xl border border-line bg-card p-5 shadow-card anim-fade-up">
+        <h2 className="font-bold text-sm mb-1">{app.name}</h2>
+        <p className="text-xs text-text-light mb-3">
+          {app.cuisine} · {app.address}
+        </p>
+        {app.status === "pending" && (
+          <div className="flex items-center gap-2 text-xs font-semibold text-amber-600 bg-amber-50 rounded-lg p-3">
+            <i className="fa-solid fa-hourglass-half animate-pulse" aria-hidden />
+            Pending review — an admin will verify your restaurant soon.
+          </div>
+        )}
+        {app.status === "rejected" && (
+          <div className="flex items-center gap-2 text-xs font-semibold text-red-500 bg-red-50 rounded-lg p-3">
+            <i className="fa-solid fa-circle-xmark" aria-hidden />
+            Application rejected. Contact the admin for details.
+          </div>
+        )}
+      </section>
+    );
+  }
+
+  return <ApplyWizard />;
 }

@@ -34,6 +34,58 @@ export function isSetupComplete(s: AdminSecurity): boolean {
   return s.passwordRotated && s.passkeys.length > 0 && s.allowedIps.length > 0;
 }
 
+/** Admins need a passkey; super admins additionally need rotated password + IPs. */
+export function missingRequirements(
+  s: AdminSecurity,
+  role: "admin" | "super_admin",
+): string[] {
+  const missing: string[] = [];
+  if (s.passkeys.length === 0) missing.push("passkey");
+  if (role === "super_admin") {
+    if (!s.passwordRotated) missing.push("password");
+    if (s.allowedIps.length === 0) missing.push("ip");
+  }
+  return missing;
+}
+
+/**
+ * Heuristic password strength 0–4. Not zxcvbn, but catches the classics:
+ * short, common, repetitive, low variety.
+ */
+export function passwordScore(pw: string): {
+  score: number;
+  label: string;
+  tips: string[];
+} {
+  if (!pw) return { score: 0, label: "Empty", tips: [] };
+  const tips: string[] = [];
+  let score = 0;
+  const variety =
+    (/[a-z]/.test(pw) ? 1 : 0) +
+    (/[A-Z]/.test(pw) ? 1 : 0) +
+    (/[0-9]/.test(pw) ? 1 : 0) +
+    (/[^a-zA-Z0-9]/.test(pw) ? 1 : 0);
+
+  if (pw.length >= 12) score++;
+  else if (pw.length >= 8) score += 0.5;
+  else tips.push("Use at least 12 characters");
+
+  if (variety >= 3) score++;
+  else tips.push("Mix upper, lower, numbers & symbols");
+
+  if (!/(.)\1{2,}|1234|abcd|password|admin|qwerty|cravely/i.test(pw)) score++;
+  else tips.push("Avoid repeated keys or common words");
+
+  if (pw.length >= 16 && variety === 4) score++;
+
+  const labels = ["Very weak", "Weak", "Fair", "Strong", "Excellent"];
+  return {
+    score: Math.min(4, Math.round(score)),
+    label: labels[Math.min(4, Math.round(score))],
+    tips,
+  };
+}
+
 // ---------- WebAuthn helpers ----------
 
 function toBase64Url(bytes: ArrayBuffer | Uint8Array): string {

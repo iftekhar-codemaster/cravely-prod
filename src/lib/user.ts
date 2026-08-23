@@ -20,6 +20,7 @@ export type UserProfile = {
   photoURL: string;
   role: Role;
   restaurantId?: string;
+  perms?: string[];
   createdAt?: unknown;
 };
 

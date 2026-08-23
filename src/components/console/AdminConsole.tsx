@@ -4,11 +4,11 @@ import { useCallback, useEffect, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useAuth } from "@/components/AuthProvider";
-import { isAdminRole, ROLE_LABELS } from "@/lib/user";
+import { isAdminRole } from "@/lib/user";
 import {
   getAdminSecurity,
-  isSetupComplete,
   ipMatchesAllowed,
+  missingRequirements,
   verifyPasskey,
 } from "@/lib/adminSecurity";
 
@@ -61,18 +61,23 @@ export default function ConsoleShell({ children }: { children: ReactNode }) {
     }
     try {
       const security = await getAdminSecurity(user.uid);
-      if (setupMode || isSetupComplete(security)) {
-        if (setupMode) {
-          setState("ready");
-          return;
-        }
-        // IP restriction — admins only
-        const res = await fetch("/api/my-ip", { cache: "no-store" });
-        const { ip } = (await res.json()) as { ip: string };
-        setMyIp(ip);
-        if (!ipMatchesAllowed(ip, security.allowedIps)) {
-          setState("ip-blocked");
-          return;
+      const role = profile.role === "super_admin" ? "super_admin" : "admin";
+      const missing = missingRequirements(security, role);
+      if (setupMode) {
+        // Setup page only needs the role; wizard decides what's still required
+        setState("ready");
+        return;
+      }
+      if (missing.length === 0) {
+        // IP restriction — super admins only
+        if (role === "super_admin") {
+          const res = await fetch("/api/my-ip", { cache: "no-store" });
+          const { ip } = (await res.json()) as { ip: string };
+          setMyIp(ip);
+          if (!ipMatchesAllowed(ip, security.allowedIps)) {
+            setState("ip-blocked");
+            return;
+          }
         }
         // Passkey challenge once per browser session
         const verified = sessionStorage.getItem("cravely:passkey-ok");
@@ -137,7 +142,7 @@ export default function ConsoleShell({ children }: { children: ReactNode }) {
         <Blocked
           icon="fa-solid fa-user-shield"
           title="Security setup required"
-          message="Before you can use the admin console you must rotate the initial password, enroll a passkey and set your allowed IPs."
+          message="Before you can use the admin console you need to finish the quick security wizard (passkey, and for owners: password & IPs)."
         >
           <Link
             href="/console/admin/setup"
@@ -237,7 +242,7 @@ export default function ConsoleShell({ children }: { children: ReactNode }) {
       </header>
       <main className="px-4 pt-5">{children}</main>
       <p className="mt-8 text-center text-[11px] text-text-light">
-        Signed in as {ROLE_LABELS[profile!.role]} · IP {myIp || "—"}
+        Signed in as {profile!.role === "super_admin" ? "Super Admin" : "Admin"} · IP {myIp || "—"}
       </p>
     </div>
   );

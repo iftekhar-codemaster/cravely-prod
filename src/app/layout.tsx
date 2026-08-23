@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import BottomNav from "@/components/BottomNav";
+import ImpersonationBanner from "@/components/ImpersonationBanner";
 import { AuthProvider } from "@/components/AuthProvider";
 import AppGate from "@/components/AppGate";
 
@@ -35,6 +36,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         <body className="min-h-full flex flex-col">
           <AuthProvider>
             <AppGate>
+              <ImpersonationBanner />
               <main className="w-full max-w-md mx-auto bg-white min-h-screen shadow-2xl relative pb-32">
                 {children}
               </main>

@@ -1,109 +1,94 @@
 import Link from "next/link";
 import SearchBar from "@/components/SearchBar";
-import FoodGrid from "@/components/FoodGrid";
-import { getAllFoods, getStories, getOffers, getCuisines } from "@/lib/data";
+import { getStories } from "@/lib/data";
+import ForYou from "@/components/home/ForYou";
+import { HomeOffers, HomeCuisines, HomeFoods } from "@/components/home/HomeSections";
+import Reveal from "@/components/home/Reveal";
+
+function greeting(): string {
+  const h = new Date().getHours();
+  if (h < 5) return "Late-night cravings?";
+  if (h < 12) return "Good morning ☀";
+  if (h < 17) return "Good afternoon";
+  if (h < 21) return "Good evening";
+  return "Dinner time!";
+}
 
 export default async function HomePage() {
-  const [foods, stories, offers, cuisines] = await Promise.all([
-    getAllFoods(),
-    getStories(),
-    getOffers(),
-    getCuisines(),
-  ]);
+  const stories = await getStories();
 
   return (
     <div>
+      {/* Hero greeting — anchors the eye before anything moves */}
+      <section className="px-4 pt-6">
+        <div className="anim-fade-up flex items-end justify-between">
+          <div>
+            <p className="text-xs text-text-light">{greeting()}</p>
+            <h1 className="text-2xl font-extrabold leading-tight mt-0.5">
+              What are you{" "}
+              <span className="text-primary">craving</span> today?
+            </h1>
+          </div>
+          <Link
+            href="/maps"
+            className="text-[11px] font-semibold text-primary border border-primary/30 rounded-full px-2.5 py-1.5 pressable whitespace-nowrap"
+          >
+            <i className="fa-solid fa-location-dot mr-1" aria-hidden />
+            Thakurgaon
+          </Link>
+        </div>
+      </section>
+
       {/* Search */}
-      <section className="px-4 pt-6 pb-2">
+      <section className="px-4 pt-4 pb-2 anim-fade-up" style={{ animationDelay: "90ms" }}>
         <SearchBar />
       </section>
 
       {/* Stories */}
-      <section className="pt-4">
-        <div className="px-4 flex gap-4 overflow-x-auto no-scrollbar pb-1">
-          {stories.map((story) => (
-            <div key={story.name} className="flex flex-col items-center gap-2 min-w-[72px]">
+      <Reveal delay={120}>
+        <section className="pt-4">
+          <div className="px-4 flex gap-4 overflow-x-auto no-scrollbar pb-1">
+            {stories.map((story, i) => (
               <div
-                className={`w-[68px] h-[68px] rounded-full p-[3px] ${
-                  story.self
-                    ? "bg-gray-300"
-                    : "bg-[linear-gradient(45deg,#f09433,#e6683c,#dc2743,#cc2366,#bc1888)]"
-                }`}
+                key={story.name}
+                className={`anim-pop flex flex-col items-center gap-2 min-w-[72px] pressable`}
+                style={{ animationDelay: `${Math.min(i * 55, 400)}ms` }}
               >
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={story.image}
-                  alt={story.name}
-                  className="w-full h-full rounded-full border-[3px] border-background object-cover"
-                />
+                <div
+                  className={`w-[68px] h-[68px] rounded-full p-[3px] ${
+                    story.self
+                      ? "bg-gray-300"
+                      : "bg-[linear-gradient(45deg,#f09433,#e6683c,#dc2743,#cc2366,#bc1888)]"
+                  }`}
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={story.image}
+                    alt={story.name}
+                    loading="lazy"
+                    className="w-full h-full rounded-full border-[3px] border-background object-cover"
+                  />
+                </div>
+                <span className="text-xs font-medium w-[75px] text-center truncate">
+                  {story.name}
+                </span>
               </div>
-              <span className="text-xs font-medium w-[75px] text-center truncate">
-                {story.name}
-              </span>
-            </div>
-          ))}
-        </div>
-      </section>
+            ))}
+          </div>
+        </section>
+      </Reveal>
 
-      {/* Offers */}
-      <section className="px-4 pt-6">
-        <h2 className="text-xl font-semibold mb-4">
-          <i className="fa-solid fa-location-dot text-primary mr-2" aria-hidden />
-          Thakurgaon&apos;s Offers
-        </h2>
-        <div className="flex gap-5 overflow-x-auto no-scrollbar pb-2 -mx-4 px-4">
-          {offers.map((offer) => (
-            <div
-              key={offer.title}
-              className="min-w-[280px] h-[140px] rounded-xl p-6 text-white flex flex-col justify-center shadow-card bg-cover bg-center"
-              style={{
-                backgroundImage: `url('${offer.image}')`,
-                backgroundColor: offer.bg,
-                backgroundBlendMode: "overlay",
-              }}
-            >
-              <h3 className="font-bold text-lg">{offer.title}</h3>
-              <p className="text-sm opacity-90 mt-1">{offer.code}</p>
-            </div>
-          ))}
-        </div>
-      </section>
+      {/* Personalized picks */}
+      <ForYou />
+
+      {/* Auto-rotating offers gallery */}
+      <HomeOffers />
 
       {/* Cuisines */}
-      <section className="px-4 pt-7">
-        <h2 className="text-xl font-semibold mb-5">Your Cuisines</h2>
-        <div className="flex gap-6 overflow-x-auto no-scrollbar pb-2 -mx-4 px-4">
-          {cuisines.map((cuisine, i) => (
-            <Link
-              key={cuisine}
-              href={`/search?q=${encodeURIComponent(cuisine)}`}
-              className="min-w-[100px] text-center transition-transform hover:-translate-y-1"
-            >
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={`https://loremflickr.com/120/120/dish?lock=${i + 400}`}
-                alt={cuisine}
-                className="w-[84px] h-[84px] rounded-[20px] object-cover mx-auto mb-2 shadow-card"
-              />
-              <p className="text-[15px] font-semibold text-primary">{cuisine}</p>
-            </Link>
-          ))}
-        </div>
-      </section>
+      <HomeCuisines />
 
       {/* All Foods */}
-      <section className="px-4 pt-8">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-xl font-semibold">All Foods</h2>
-          <Link
-            href="/packages"
-            className="bg-primary text-white text-sm px-4 py-2 rounded-full font-semibold hover:shadow-[0_4px_10px_rgba(255,71,87,0.3)] transition-shadow"
-          >
-            Make your Plan
-          </Link>
-        </div>
-        <FoodGrid foods={foods} />
-      </section>
+      <HomeFoods />
 
       {/* Footer */}
       <footer className="mt-8 py-8 text-center border-t border-line">

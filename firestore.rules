@@ -14,6 +14,15 @@ service cloud.firestore {
     function isAdmin() {
       return signedIn() && (myRole() == 'admin' || myRole() == 'super_admin');
     }
+    function myRestaurantId() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.restaurantId;
+    }
+    function ownsRestaurant(rid) {
+      return signedIn()
+        && myRole() == 'restaurant'
+        && rid != null
+        && rid == myRestaurantId();
+    }
 
     // Catalog content — public read; admins manage
     match /restaurants/{id} {
@@ -24,7 +33,12 @@ service cloud.firestore {
     }
     match /foods/{id} {
       allow read: if true;
-      allow write: if isAdmin();
+      allow create: if isAdmin()
+        || ownsRestaurant(request.resource.data.restaurantId);
+      allow update: if isAdmin()
+        || (ownsRestaurant(resource.data.restaurantId)
+            && request.resource.data.restaurantId == resource.data.restaurantId);
+      allow delete: if isAdmin() || ownsRestaurant(resource.data.restaurantId);
     }
     match /stories/{id} {
       allow read: if true;

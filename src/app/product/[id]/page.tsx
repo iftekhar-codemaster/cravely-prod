@@ -1,32 +1,66 @@
-import { notFound } from "next/navigation";
+"use client";
+
 import Link from "next/link";
+import { useParams } from "next/navigation";
 import CloseButton from "@/components/CloseButton";
-import ProductActions from "@/components/ProductActions";
+import ViewTracker from "@/components/ViewTracker";
+import { useAsyncData } from "@/lib/useAsyncData";
 import {
   getFood,
   getRestaurant,
   getRelatedFoods,
   getReviews,
 } from "@/lib/data";
+import type { Food, Restaurant, Review } from "@/lib/data";
 
-export default async function ProductPage({
-  params,
-}: PageProps<"/product/[id]">) {
-  const { id } = await params;
-  const food = await getFood(id);
-  if (!food) notFound();
+export default function ProductPage() {
+  const params = useParams<{ id: string }>();
+  const id = decodeURIComponent(params.id);
 
-  const restaurant = await getRestaurant(food.restaurantId);
-  const related = await getRelatedFoods(food);
-  const reviews = getReviews(food.id);
+  const { data: food, loading } = useAsyncData<Food | undefined>(() => getFood(id), [id]);
+  const { data: restaurant } = useAsyncData<Restaurant | undefined>(
+    async () => (food ? getRestaurant(food.restaurantId) : undefined),
+    [food?.restaurantId],
+  );
+  const { data: related } = useAsyncData<Food[]>(
+    async () => (food ? getRelatedFoods(food) : []),
+    [food?.id],
+  );
+  const reviews: Review[] = getReviews(id);
+
+  if (loading || !food) {
+    return (
+      <div>
+        <CloseButton />
+        <div className="w-full aspect-square skel" />
+        <div className="p-5 space-y-3">
+          <div className="h-7 w-2/3 rounded skel" />
+          <div className="h-4 w-1/3 rounded skel" />
+          <div className="h-24 rounded-xl skel mt-4" />
+        </div>
+      </div>
+    );
+  }
+
+  if (!food) {
+    return (
+      <div className="px-6 pt-24 text-center">
+        <i className="fa-solid fa-magnifying-glass-minus text-4xl text-text-light" aria-hidden />
+        <h1 className="mt-4 font-bold">Dish not found</h1>
+        <Link href="/" className="mt-3 inline-block text-primary font-semibold text-sm">
+          Back to home
+        </Link>
+      </div>
+    );
+  }
 
   return (
     <div className="relative">
-      {/* X button top-right — goes back to wherever the user came from */}
+      <ViewTracker foodId={food.id} />
       <CloseButton />
 
       {/* Image */}
-      <section className="relative w-full aspect-square bg-gray-200 flex items-center justify-center">
+      <section className="anim-fade-up relative w-full aspect-square bg-gray-200 flex items-center justify-center">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src={food.image}
@@ -39,13 +73,14 @@ export default async function ProductPage({
       </section>
 
       {/* Restaurant & food header */}
-      <section className="p-5 flex items-center gap-4 border-b border-line">
+      <section className="p-5 flex items-center gap-4 border-b border-line anim-fade-up" style={{ animationDelay: "80ms" }}>
         {restaurant && (
           <>
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={restaurant.logo}
               alt=""
+              loading="lazy"
               className="w-16 h-16 rounded-xl flex-shrink-0 object-cover border border-gray-300"
             />
             <div className="flex flex-col min-w-0">
@@ -110,19 +145,21 @@ export default async function ProductPage({
       </section>
 
       {/* Also ate together with */}
-      <section className="p-5 pb-28">
+      <section className="p-5 pb-32">
         <h2 className="text-lg font-bold mb-4">Also ate together with</h2>
         <div className="space-y-4">
-          {related.map((item) => (
+          {(related ?? []).map((item, i) => (
             <Link
               key={item.id}
               href={`/product/${item.id}`}
-              className="flex items-center gap-4"
+              className="anim-fade-up flex items-center gap-4 pressable"
+              style={{ animationDelay: `${Math.min(i * 70, 280)}ms` }}
             >
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={item.image}
                 alt={item.name}
+                loading="lazy"
                 className="w-14 h-14 bg-gray-200 rounded-lg flex-shrink-0 object-cover"
               />
               <div className="flex-1 min-w-0">
@@ -134,9 +171,6 @@ export default async function ProductPage({
           ))}
         </div>
       </section>
-
-      {/* Bottom action bar (replaces global nav on this page) */}
-      <ProductActions foodId={food.id} />
     </div>
   );
 }
