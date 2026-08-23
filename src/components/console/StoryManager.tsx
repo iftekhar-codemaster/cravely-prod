@@ -14,6 +14,7 @@ import {
 import { getDb } from "@/lib/firebase";
 import { audit } from "@/lib/audit";
 import { getAllRestaurants } from "@/lib/data";
+import { uploadImage } from "@/lib/storage";
 import SmartImg from "@/components/SmartImg";
 
 type Story = {
@@ -32,6 +33,7 @@ export default function StoryManager({ restaurantId }: { restaurantId: string })
   const [name, setName] = useState("");
   const [image, setImage] = useState("");
   const [caption, setCaption] = useState("");
+  const [uploading, setUploading] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -51,6 +53,24 @@ export default function StoryManager({ restaurantId }: { restaurantId: string })
     const t = setTimeout(() => void load().catch(() => setStories([])), 0);
     return () => clearTimeout(t);
   }, [load]);
+
+  async function handleUpload(file: File | undefined) {
+    if (!file) return;
+    setUploading(true);
+    setError(null);
+    try {
+      setImage(await uploadImage(file, "story", restaurantId));
+    } catch (err) {
+      console.warn(err);
+      setError(
+        err instanceof Error
+          ? `${err.message} You can paste an image URL below instead.`
+          : "Upload failed. You can paste an image URL below instead.",
+      );
+    } finally {
+      setUploading(false);
+    }
+  }
 
   async function publish() {
     if (!image.trim()) {
@@ -97,10 +117,27 @@ export default function StoryManager({ restaurantId }: { restaurantId: string })
           <p className="mb-3 rounded-lg bg-red-50 px-3 py-2 text-xs text-primary">{error}</p>
         )}
         <div className="space-y-3">
+          <label
+            className={`inline-flex items-center gap-2 rounded-full border border-line bg-background px-4 py-2 text-xs font-semibold cursor-pointer hover:border-primary transition-colors ${
+              uploading ? "opacity-50 pointer-events-none" : ""
+            }`}
+          >
+            <i
+              className={`fa-solid ${uploading ? "fa-spinner animate-spin" : "fa-camera"}`}
+              aria-hidden
+            />
+            {uploading ? "Uploading…" : "Upload photo"}
+            <input
+              type="file"
+              accept="image/*"
+              onChange={(e) => void handleUpload(e.target.files?.[0])}
+              className="hidden"
+            />
+          </label>
           <input
             value={image}
             onChange={(e) => setImage(e.target.value)}
-            placeholder="Image URL (portrait works best)"
+            placeholder="…or paste an image URL (portrait works best)"
             className={inputCls}
           />
           {image.trim() && (

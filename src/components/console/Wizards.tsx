@@ -7,6 +7,7 @@ import { useAuth } from "@/components/AuthProvider";
 import { getDb } from "@/lib/firebase";
 import { getCuisines } from "@/lib/data";
 import { audit } from "@/lib/audit";
+import { uploadImage } from "@/lib/storage";
 
 const inputCls =
   "w-full rounded-xl border border-line bg-card px-4 py-3 text-sm outline-none focus:border-primary transition-colors";
@@ -154,22 +155,25 @@ export function ApplyWizard() {
 
 export function AddDishWizard({
   restaurantId,
-  onClose,
   onAdded,
+  inline,
 }: {
   restaurantId: string;
-  onClose: () => void;
   onAdded: () => void;
+  inline?: boolean;
 }) {
   const { user } = useAuth();
   const [step, setStep] = useState(0);
   const [cuisines, setCuisines] = useState<string[]>([]);
+  const [images, setImages] = useState<string[]>([]);
+  const [manualUrl, setManualUrl] = useState("");
+  const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
   const [form, setForm] = useState({
     name: "",
     category: "",
     price: "",
     description: "",
-    image: "",
   });
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -179,10 +183,40 @@ export function AddDishWizard({
     return () => clearTimeout(t);
   }, []);
 
+  async function addFiles(files: FileList | null) {
+    if (!files?.length) return;
+    setUploading(true);
+    setUploadError(null);
+    try {
+      const urls: string[] = [];
+      for (const file of Array.from(files)) {
+        if (images.length + urls.length >= 3) break;
+        urls.push(await uploadImage(file, "food", restaurantId));
+      }
+      setImages((prev) => [...prev, ...urls].slice(0, 3));
+    } catch (err) {
+      console.warn(err);
+      setUploadError(
+        err instanceof Error
+          ? `${err.message} You can paste an image URL below instead.`
+          : "Upload failed. You can paste an image URL below instead.",
+      );
+    } finally {
+      setUploading(false);
+    }
+  }
+
+  function addManualUrl() {
+    const url = manualUrl.trim();
+    if (!url || images.length >= 3) return;
+    setImages((prev) => [...prev, url].slice(0, 3));
+    setManualUrl("");
+  }
+
   const steps = ["Basics", "Details", "Review"];
   const priceNum = Number(form.price);
   const previewImage =
-    form.image.trim() ||
+    images[0] ||
     `https://loremflickr.com/400/300/${encodeURIComponent(form.category || "food")}`;
 
   async function submit() {
@@ -198,7 +232,9 @@ export function AddDishWizard({
         price: Math.round(priceNum),
         rating: 0,
         reviews: 0,
-        image: previewImage,
+        image: images[0] ?? previewImage,
+        images,
+        pairsWith: [],
         description: form.description.trim() || "Delicious — details coming soon.",
         createdBy: user.uid,
         createdAt: serverTimestamp(),
@@ -215,6 +251,215 @@ export function AddDishWizard({
   const canStep =
     (step === 0 && form.name.trim().length >= 2 && priceNum > 0) || step > 0;
 
+  const body = (
+    <>
+      {/* Stepper */}
+      <div className="flex gap-2 mb-5">
+        {steps.map((s, i) => (
+          <div key={s} className="flex-1">
+            <div className={`h-1.5 rounded-full ${i <= step ? "bg-primary" : "bg-gray-200"}`} />
+            <span className={`block mt-1.5 text-[10px] font-semibold ${i <= step ? "text-primary" : "text-text-light"}`}>
+              {i + 1}. {s}
+            </span>
+          </div>
+        ))}
+      </div>
+
+      {error && (
+        <p className="mb-4 rounded-lg bg-red-50 px-3 py-2 text-sm text-primary">{error}</p>
+      )}
+
+      {step === 0 && (
+        <div className="space-y-4 anim-fade-up">
+          <input
+            placeholder="Dish name (e.g. Mutton Kacchi)"
+            value={form.name}
+            onChange={(e) => setForm({ ...form, name: e.target.value })}
+            className={inputCls}
+          />
+          <input
+            type="number"
+            min={1}
+            placeholder="Price in ৳ (e.g. 320)"
+            value={form.price}
+            onChange={(e) => setForm({ ...form, price: e.target.value })}
+            className={inputCls}
+          />
+          <div>
+            <p className="text-xs font-semibold mb-2">Category</p>
+            <div className="flex flex-wrap gap-2">
+              {cuisines.map((c) => (
+                <button
+                  key={c}
+                  type="button"
+                  onClick={() => setForm({ ...form, category: c })}
+                  className={`text-xs px-3 py-1.5 rounded-full border transition-colors ${
+                    form.category === c
+                      ? "bg-primary text-white border-primary"
+                      : "border-line bg-card text-text-light"
+                  }`}
+                >
+                  {c}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {step === 1 && (
+        <div className="space-y-4 anim-fade-up">
+          <textarea
+            rows={4}
+            placeholder="Description — what makes it special?"
+            value={form.description}
+            onChange={(e) => setForm({ ...form, description: e.target.value })}
+            className={`${inputCls} resize-none`}
+          />
+
+          <div>
+            <p className="text-xs font-semibold mb-2">Photos ({images.length}/3)</p>
+            {images.length > 0 && (
+              <div className="flex gap-2 mb-3">
+                {images.map((url, i) => (
+                  <div key={`${url}-${i}`} className="relative w-20 h-20 rounded-xl overflow-hidden border border-line">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={url} alt="" className="w-full h-full object-cover" />
+                    {i === 0 && (
+                      <span className="absolute bottom-0 inset-x-0 bg-black/60 text-white text-[9px] font-bold text-center py-0.5">
+                        PRIMARY
+                      </span>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => setImages(images.filter((_, j) => j !== i))}
+                      aria-label={`Remove photo ${i + 1}`}
+                      className="absolute top-1 right-1 w-5 h-5 rounded-full bg-black/60 text-white flex items-center justify-center"
+                    >
+                      <i className="fa-solid fa-xmark text-[9px]" aria-hidden />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+            {images.length < 3 && (
+              <>
+                <label
+                  className={`inline-flex items-center gap-2 rounded-full border border-line px-4 py-2 text-xs font-semibold cursor-pointer hover:border-primary transition-colors ${
+                    uploading ? "opacity-50 pointer-events-none" : ""
+                  }`}
+                >
+                  <i className={`fa-solid ${uploading ? "fa-spinner animate-spin" : "fa-camera"}`} aria-hidden />
+                  {uploading ? "Uploading…" : "Add photo"}
+                  <input
+                    type="file"
+                    accept="image/*"
+                    multiple
+                    onChange={(e) => void addFiles(e.target.files)}
+                    className="hidden"
+                  />
+                </label>
+                <div className="flex gap-2 mt-2">
+                  <input
+                    value={manualUrl}
+                    onChange={(e) => setManualUrl(e.target.value)}
+                    placeholder="…or paste an image URL"
+                    className={`${inputCls} py-2 text-xs`}
+                  />
+                  <button
+                    type="button"
+                    onClick={addManualUrl}
+                    disabled={!manualUrl.trim()}
+                    aria-label="Add image URL"
+                    className="px-4 rounded-xl border border-line text-xs font-semibold text-primary disabled:opacity-40"
+                  >
+                    Add
+                  </button>
+                </div>
+              </>
+            )}
+            {uploadError && (
+              <p className="mt-2 rounded-lg bg-red-50 px-3 py-2 text-xs text-primary">{uploadError}</p>
+            )}
+          </div>
+
+          <div className="rounded-xl overflow-hidden border border-line">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={previewImage} alt="" className="w-full h-36 object-cover" />
+          </div>
+        </div>
+      )}
+
+      {step === 2 && (
+        <div className="anim-fade-up">
+          <div className="rounded-2xl overflow-hidden border border-line">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={previewImage} alt="" className="w-full h-40 object-cover" />
+          </div>
+          <div className="flex justify-between items-start mt-3">
+            <div>
+              <div className="font-extrabold">{form.name}</div>
+              <div className="text-xs text-text-light mt-0.5">{form.category}</div>
+            </div>
+            <div className="font-extrabold text-primary">৳{Math.round(priceNum)}</div>
+          </div>
+          <p className="text-xs text-text-light mt-2 leading-relaxed">
+            {form.description || "No description"}
+          </p>
+          {images.length > 1 && (
+            <p className="text-[11px] text-text-light mt-1">
+              +{images.length - 1} more photo{images.length > 2 ? "s" : ""}
+            </p>
+          )}
+          <Link href={`/restaurants/${restaurantId}`} className="inline-block mt-2 text-[11px] text-primary font-semibold">
+            Preview listing page →
+          </Link>
+        </div>
+      )}
+
+      {/* Nav */}
+      <div className={`flex gap-3 mt-6 ${inline ? "" : "mb-4"}`}>
+        {step > 0 && (
+          <button
+            onClick={() => setStep((s) => s - 1)}
+            className="flex-1 border border-line rounded-full py-3 font-semibold text-sm"
+          >
+            Back
+          </button>
+        )}
+        {step < 2 ? (
+          <button
+            onClick={() => canStep && setStep((s) => s + 1)}
+            disabled={!canStep}
+            className="flex-[2] bg-primary text-white rounded-full py-3 font-semibold text-sm disabled:opacity-40 pressable"
+          >
+            Continue
+          </button>
+        ) : (
+          <button
+            onClick={() => void submit()}
+            disabled={busy}
+            className="flex-[2] bg-primary text-white rounded-full py-3 font-semibold text-sm disabled:opacity-40 pressable"
+          >
+            {busy ? "Publishing…" : "Publish dish"}
+          </button>
+        )}
+      </div>
+    </>
+  );
+
+  if (inline) {
+    return (
+      <section className="rounded-2xl border border-line bg-card p-5 shadow-card anim-fade-up">
+        <h2 className="font-extrabold text-sm mb-4">
+          <i className="fa-solid fa-plus text-primary mr-2" aria-hidden />
+          New dish
+        </h2>
+        {body}
+      </section>
+    );
+  }
+
   return (
     <div
       className="fixed inset-0 z-[70] bg-black/40 flex items-end sm:items-center justify-center"
@@ -227,7 +472,7 @@ export function AddDishWizard({
         <div className="sticky top-0 bg-white px-5 pt-4 pb-3 border-b border-line flex items-center justify-between">
           <span className="font-extrabold">New dish</span>
           <button
-            onClick={onClose}
+            onClick={onAdded}
             aria-label="Close"
             className="w-8 h-8 rounded-full bg-background text-text-light hover:text-primary transition-colors"
           >
@@ -235,135 +480,7 @@ export function AddDishWizard({
           </button>
         </div>
 
-        <div className="px-5 py-4">
-          {/* Stepper */}
-          <div className="flex gap-2 mb-5">
-            {steps.map((s, i) => (
-              <div key={s} className="flex-1">
-                <div className={`h-1.5 rounded-full ${i <= step ? "bg-primary" : "bg-gray-200"}`} />
-                <span className={`block mt-1.5 text-[10px] font-semibold ${i <= step ? "text-primary" : "text-text-light"}`}>
-                  {i + 1}. {s}
-                </span>
-              </div>
-            ))}
-          </div>
-
-          {error && (
-            <p className="mb-4 rounded-lg bg-red-50 px-3 py-2 text-sm text-primary">{error}</p>
-          )}
-
-          {step === 0 && (
-            <div className="space-y-4 anim-fade-up">
-              <input
-                autoFocus
-                placeholder="Dish name (e.g. Mutton Kacchi)"
-                value={form.name}
-                onChange={(e) => setForm({ ...form, name: e.target.value })}
-                className={inputCls}
-              />
-              <input
-                type="number"
-                min={1}
-                placeholder="Price in ৳ (e.g. 320)"
-                value={form.price}
-                onChange={(e) => setForm({ ...form, price: e.target.value })}
-                className={inputCls}
-              />
-              <div>
-                <p className="text-xs font-semibold mb-2">Category</p>
-                <div className="flex flex-wrap gap-2">
-                  {cuisines.map((c) => (
-                    <button
-                      key={c}
-                      type="button"
-                      onClick={() => setForm({ ...form, category: c })}
-                      className={`text-xs px-3 py-1.5 rounded-full border transition-colors ${
-                        form.category === c
-                          ? "bg-primary text-white border-primary"
-                          : "border-line bg-card text-text-light"
-                      }`}
-                    >
-                      {c}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            </div>
-          )}
-
-          {step === 1 && (
-            <div className="space-y-4 anim-fade-up">
-              <textarea
-                rows={4}
-                placeholder="Description — what makes it special?"
-                value={form.description}
-                onChange={(e) => setForm({ ...form, description: e.target.value })}
-                className={`${inputCls} resize-none`}
-              />
-              <input
-                placeholder="Image URL (optional — we'll fetch a fitting photo)"
-                value={form.image}
-                onChange={(e) => setForm({ ...form, image: e.target.value })}
-                className={inputCls}
-              />
-              <div className="rounded-xl overflow-hidden border border-line">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={previewImage} alt="" className="w-full h-36 object-cover" />
-              </div>
-            </div>
-          )}
-
-          {step === 2 && (
-            <div className="anim-fade-up">
-              <div className="rounded-2xl overflow-hidden border border-line">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={previewImage} alt="" className="w-full h-40 object-cover" />
-              </div>
-              <div className="flex justify-between items-start mt-3">
-                <div>
-                  <div className="font-extrabold">{form.name}</div>
-                  <div className="text-xs text-text-light mt-0.5">{form.category}</div>
-                </div>
-                <div className="font-extrabold text-primary">৳{Math.round(priceNum)}</div>
-              </div>
-              <p className="text-xs text-text-light mt-2 leading-relaxed">
-                {form.description || "No description"}
-              </p>
-              <Link href={`/restaurants/${restaurantId}`} className="inline-block mt-2 text-[11px] text-primary font-semibold" onClick={onClose}>
-                Preview listing page →
-              </Link>
-            </div>
-          )}
-
-          {/* Nav */}
-          <div className="flex gap-3 mt-6 mb-4">
-            {step > 0 && (
-              <button
-                onClick={() => setStep((s) => s - 1)}
-                className="flex-1 border border-line rounded-full py-3 font-semibold text-sm"
-              >
-                Back
-              </button>
-            )}
-            {step < 2 ? (
-              <button
-                onClick={() => canStep && setStep((s) => s + 1)}
-                disabled={!canStep}
-                className="flex-[2] bg-primary text-white rounded-full py-3 font-semibold text-sm disabled:opacity-40 pressable"
-              >
-                Continue
-              </button>
-            ) : (
-              <button
-                onClick={() => void submit()}
-                disabled={busy}
-                className="flex-[2] bg-primary text-white rounded-full py-3 font-semibold text-sm disabled:opacity-40 pressable"
-              >
-                {busy ? "Publishing…" : "Publish dish"}
-              </button>
-            )}
-          </div>
-        </div>
+        <div className="px-5 py-4">{body}</div>
       </div>
     </div>
   );

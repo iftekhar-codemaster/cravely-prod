@@ -29,6 +29,23 @@ export default function BottomNav() {
   const productId = pathname.startsWith("/product/")
     ? decodeURIComponent(pathname.slice("/product/".length))
     : null;
+  const inStudio = pathname.startsWith("/console/restaurant");
+  const [studioTab, setStudioTab] = useState<"listing" | "add" | "settings">(
+    "listing",
+  );
+
+  // studio tab comes from ?tab= (read from location to avoid useSearchParams
+  // suspense requirements inside the layout)
+  useEffect(() => {
+    if (!inStudio) return;
+    const read = () => {
+      const t = new URLSearchParams(window.location.search).get("tab");
+      setStudioTab(t === "add" || t === "settings" ? t : "listing");
+    };
+    read();
+    window.addEventListener("popstate", read);
+    return () => window.removeEventListener("popstate", read);
+  }, [inStudio, pathname]);
 
   const [liked, setLiked] = useState(false);
   const [inPack, setInPack] = useState(false);
@@ -115,8 +132,32 @@ export default function BottomNav() {
     },
   ];
 
-  const slots = productId ? productSlots : normalSlots;
-  const mode = productId ? "product" : "normal";
+  const studioSlots: Slot[] = [
+    {
+      key: "listing",
+      icon: studioTab === "listing" ? "fa-solid fa-store" : "fa-regular fa-store",
+      label: "Listing",
+      href: "/console/restaurant?tab=listing",
+      active: studioTab === "listing",
+    },
+    {
+      key: "add",
+      icon: studioTab === "add" ? "fa-solid fa-circle-plus" : "fa-regular fa-plus-square",
+      label: "Add Item",
+      href: "/console/restaurant?tab=add",
+      active: studioTab === "add",
+    },
+    {
+      key: "settings",
+      icon: studioTab === "settings" ? "fa-solid fa-gear" : "fa-regular fa-gear",
+      label: "Settings",
+      href: "/console/restaurant?tab=settings",
+      active: studioTab === "settings",
+    },
+  ];
+
+  const slots = inStudio ? studioSlots : productId ? productSlots : normalSlots;
+  const mode = inStudio ? "studio" : productId ? "product" : "normal";
 
   return (
     <nav
@@ -132,7 +173,13 @@ export default function BottomNav() {
             : slot.active
               ? "text-primary font-semibold"
               : "text-[#a4b0be]"
-        } ${slot.key === "close" ? "w-[14%]" : "w-[17%]"}`;
+        } ${
+          slot.key === "close"
+            ? "w-[14%]"
+            : inStudio
+              ? "w-1/3"
+              : "w-[17%]"
+        }`;
         // keyed by mode+key so swaps replay the pop animation with stagger
         const inner = (
           <>

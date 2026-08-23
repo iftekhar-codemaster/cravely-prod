@@ -1,0 +1,42 @@
+rules_version = '2';
+
+// Cravely Cloud Storage rules.
+// Path scheme:
+//   restaurants/{restaurantId}/{kind}/{file}  kind = food|story|logo|cover
+//   users/{uid}/avatar/{file}
+service firebase.storage {
+  match /b/{bucket}/o {
+    function signedIn() {
+      return request.auth != null;
+    }
+    function myRole() {
+      return firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data.role;
+    }
+    function isAdmin() {
+      return signedIn() && (myRole() == 'admin' || myRole() == 'super_admin');
+    }
+    function ownsRestaurant(rid) {
+      return signedIn()
+        && myRole() == 'restaurant'
+        && firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data.restaurantId == rid;
+    }
+
+    function validImage() {
+      return request.resource.size <= 2 * 1024 * 1024
+        && request.resource.contentType.matches('image/.*');
+    }
+
+    match /restaurants/{restaurantId}/{kind}/{fileName} {
+      allow read: if true;
+      allow write: if (ownsRestaurant(restaurantId) || isAdmin())
+        && kind in ['food', 'story', 'logo', 'cover']
+        && validImage();
+      allow delete: if ownsRestaurant(restaurantId) || isAdmin();
+    }
+
+    match /users/{uid}/avatar/{fileName} {
+      allow read: if true;
+      allow write, delete: if signedIn() && request.auth.uid == uid && validImage();
+    }
+  }
+}

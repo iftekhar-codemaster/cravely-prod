@@ -11,6 +11,31 @@ import {
 } from "@/lib/data";
 import type { Food, Restaurant } from "@/lib/data";
 
+/** Tolerant time parser: accepts "18:30" (24h) or "6:30 PM" style. Returns minutes since midnight, or undefined. */
+function parseTime(value?: string): number | undefined {
+  if (!value) return undefined;
+  const m = value.trim().match(/^(\d{1,2}):(\d{2})\s*(AM|PM)?$/i);
+  if (!m) return undefined;
+  let h = Number.parseInt(m[1], 10);
+  const min = Number.parseInt(m[2], 10);
+  const ap = m[3]?.toUpperCase();
+  if (ap === "PM" && h < 12) h += 12;
+  if (ap === "AM" && h === 12) h = 0;
+  if (h > 23 || min > 59) return undefined;
+  return h * 60 + min;
+}
+
+/** Returns true/false when both times parse, otherwise undefined (unknown). */
+function isOpenNow(openFrom?: string, openUntil?: string): boolean | undefined {
+  const from = parseTime(openFrom);
+  const until = parseTime(openUntil);
+  if (from === undefined || until === undefined) return undefined;
+  const now = new Date();
+  const cur = now.getHours() * 60 + now.getMinutes();
+  if (until <= from) return cur >= from || cur < until; // spans midnight
+  return cur >= from && cur < until;
+}
+
 export default function RestaurantDetailPage() {
   const params = useParams<{ id: string }>();
   const id = decodeURIComponent(params.id);
@@ -86,11 +111,28 @@ export default function RestaurantDetailPage() {
         </div>
       </div>
 
-      <section className="p-5 border-b border-line anim-fade-up" style={{ animationDelay: "70ms" }}>
+      {restaurant.cover && (
+        <div className="px-5 pt-4 anim-fade-up">
+          <SmartImg
+            src={restaurant.cover}
+            alt={`${restaurant.name} cover`}
+            className="h-28 rounded-xl overflow-hidden w-full"
+            imgClassName="w-full h-full object-cover"
+          />
+        </div>
+      )}
+
+      <section
+        className="p-5 border-b border-line anim-fade-up"
+        style={{ animationDelay: "70ms" }}
+      >
         <p className="text-sm text-text-light">
           {restaurant.cuisine} · {restaurant.address}
         </p>
-        <div className="flex gap-4 mt-3 text-sm flex-wrap">
+        {restaurant.description && (
+          <p className="text-sm text-text-light mt-2">{restaurant.description}</p>
+        )}
+        <div className="flex gap-4 mt-3 text-sm flex-wrap items-center">
           <span className="text-[#ffa502] font-semibold">
             <i className="fa-solid fa-star mr-1" aria-hidden />
             {restaurant.rating}
@@ -101,7 +143,43 @@ export default function RestaurantDetailPage() {
             {restaurant.distanceKm} km
           </span>
           <span className="text-text-light">Open until {restaurant.openUntil}</span>
+          {isOpenNow(restaurant.openFrom, restaurant.openUntil) === true && (
+            <span className="inline-flex items-center gap-1 rounded-xl bg-card border border-line px-2 py-0.5 text-xs font-semibold text-green-600">
+              <i className="fa-solid fa-circle text-[6px]" aria-hidden />
+              Open now
+            </span>
+          )}
+          {isOpenNow(restaurant.openFrom, restaurant.openUntil) === false && (
+            <span className="inline-flex items-center gap-1 rounded-xl bg-card border border-line px-2 py-0.5 text-xs font-semibold text-red-500">
+              <i className="fa-solid fa-circle text-[6px]" aria-hidden />
+              Closed
+            </span>
+          )}
         </div>
+        {(restaurant.phone || restaurant.whatsapp) && (
+          <div className="flex gap-2 mt-4">
+            {restaurant.phone && (
+              <a
+                href={`tel:${restaurant.phone}`}
+                className="pressable inline-flex items-center gap-1.5 rounded-xl border border-line bg-card px-3 py-1.5 text-xs font-semibold text-primary"
+              >
+                <i className="fa-solid fa-phone text-[11px]" aria-hidden />
+                Call
+              </a>
+            )}
+            {restaurant.whatsapp && (
+              <a
+                href={`https://wa.me/${restaurant.whatsapp.replace(/\D/g, "")}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="pressable inline-flex items-center gap-1.5 rounded-xl border border-line bg-card px-3 py-1.5 text-xs font-semibold text-primary"
+              >
+                <i className="fa-brands fa-whatsapp text-[11px]" aria-hidden />
+                WhatsApp
+              </a>
+            )}
+          </div>
+        )}
       </section>
 
       {/* Menu */}

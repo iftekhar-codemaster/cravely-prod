@@ -9,6 +9,7 @@ import LocationMap from "@/components/LocationMap";
 import { useAsyncData } from "@/lib/useAsyncData";
 import {
   getFood,
+  getFoodsByIds,
   getRestaurant,
   getRelatedFoods,
   getReviews,
@@ -24,10 +25,20 @@ export default function ProductPage() {
     async () => (food ? getRestaurant(food.restaurantId) : undefined),
     [food?.restaurantId],
   );
-  const { data: related } = useAsyncData<Food[]>(
-    async () => (food ? getRelatedFoods(food) : []),
-    [food?.id],
-  );
+  const { data: related } = useAsyncData<Food[]>(async () => {
+    if (!food) return [];
+    const fallback = await getRelatedFoods(food);
+    const pairIds = food.pairsWith?.filter((pid) => pid !== food.id) ?? [];
+    if (!pairIds.length) return fallback.slice(0, 4);
+    const [paired, ...rest] = await Promise.all([
+      getFoodsByIds(pairIds),
+      fallback,
+    ]);
+    const extra = rest[0].filter(
+      (f) => f.id !== food.id && !paired.some((p) => p.id === f.id),
+    );
+    return [...paired, ...extra].slice(0, 4);
+  }, [food?.id]);
   const reviews: Review[] = getReviews(id);
 
   if (loading || !food) {
@@ -123,6 +134,30 @@ export default function ProductPage() {
             </p>
           </div>
           <LocationMap lat={restaurant.lat} lng={restaurant.lng} address={restaurant.address} />
+          {(restaurant.phone || restaurant.whatsapp) && (
+            <div className="flex gap-2 mt-3">
+              {restaurant.phone && (
+                <a
+                  href={`tel:${restaurant.phone}`}
+                  className="pressable inline-flex items-center gap-1.5 rounded-xl border border-line bg-card px-3 py-1.5 text-xs font-semibold text-primary"
+                >
+                  <i className="fa-solid fa-phone text-[11px]" aria-hidden />
+                  Call
+                </a>
+              )}
+              {restaurant.whatsapp && (
+                <a
+                  href={`https://wa.me/${restaurant.whatsapp.replace(/\D/g, "")}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="pressable inline-flex items-center gap-1.5 rounded-xl border border-line bg-card px-3 py-1.5 text-xs font-semibold text-primary"
+                >
+                  <i className="fa-brands fa-whatsapp text-[11px]" aria-hidden />
+                  WhatsApp
+                </a>
+              )}
+            </div>
+          )}
         </section>
       )}
 

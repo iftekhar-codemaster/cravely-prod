@@ -1,8 +1,8 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { Suspense, useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   collection,
   deleteDoc,
@@ -19,6 +19,7 @@ import { audit } from "@/lib/audit";
 import type { Food } from "@/lib/data";
 import { ApplyWizard, AddDishWizard } from "@/components/console/Wizards";
 import StoryManager from "@/components/console/StoryManager";
+import SettingsTab from "@/components/console/SettingsTab";
 import LocationSetter from "@/components/console/LocationSetter";
 
 type Application = {
@@ -31,12 +32,32 @@ type Application = {
   status: "pending" | "approved" | "rejected";
 };
 
-type Tab = "status" | "menu" | "story";
+type Tab = "listing" | "add" | "settings";
+
+const TABS: Tab[] = ["listing", "add", "settings"];
 
 export default function RestaurantConsolePage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="px-4 pt-6">
+          <div className="h-40 rounded-xl skel" />
+        </div>
+      }
+    >
+      <RestaurantStudio />
+    </Suspense>
+  );
+}
+
+function RestaurantStudio() {
   const { user, profile, loading } = useAuth();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [as] = useState(() => getImpersonation());
+
+  const rawTab = searchParams.get("tab");
+  const tab: Tab = TABS.includes(rawTab as Tab) ? (rawTab as Tab) : "listing";
 
   const effRestaurantId =
     as?.role === "restaurant" ? as.restaurantId : profile?.restaurantId;
@@ -46,9 +67,7 @@ export default function RestaurantConsolePage() {
 
   const [app, setApp] = useState<Application | null>(null);
   const [loadedApp, setLoadedApp] = useState(false);
-  const [tab, setTab] = useState<Tab>("status");
   const [menu, setMenu] = useState<Food[] | null>(null);
-  const [adding, setAdding] = useState(false);
   const [restCoords, setRestCoords] = useState<{ lat: number; lng: number } | null>(null);
 
   const loadMyApplication = useCallback(async () => {
@@ -93,7 +112,7 @@ export default function RestaurantConsolePage() {
   }, [effRestaurantId]);
 
   useEffect(() => {
-    if (tab !== "menu" || !canManageMenu) return;
+    if (tab !== "add" || !canManageMenu) return;
     const t = setTimeout(() => void loadMenu().catch(() => setMenu([])), 0);
     return () => clearTimeout(t);
   }, [tab, canManageMenu, loadMenu]);
@@ -144,43 +163,32 @@ export default function RestaurantConsolePage() {
         </div>
       </div>
 
-      {canManageMenu && (
-        <div className="flex gap-2 mb-5">
-          {(["status", "menu", "story"] as Tab[]).map((t) => (
-            <button
-              key={t}
-              onClick={() => setTab(t)}
-              className={`text-xs font-bold px-4 py-2 rounded-full transition-colors ${
-                tab === t ? "bg-primary text-white" : "border border-line bg-card"
-              }`}
-            >
-              {t === "status" ? "Listing" : t === "menu" ? `Menu${menu ? ` (${menu.length})` : ""}` : "Story"}
-            </button>
-          ))}
-        </div>
+      {/* Listing tab (default) */}
+      {tab === "listing" && (
+        <>
+          <StatusPanel app={app} isLive={Boolean(effRestaurantId)} />
+
+          {canManageMenu && effRestaurantId && (
+            <>
+              <LocationSetter
+                restaurantId={effRestaurantId}
+                initialLat={restCoords?.lat}
+                initialLng={restCoords?.lng}
+              />
+              <StoryManager restaurantId={effRestaurantId} />
+            </>
+          )}
+        </>
       )}
 
-      {(!canManageMenu || tab === "status") && (
-        <StatusPanel app={app} isLive={Boolean(effRestaurantId)} />
-      )}
-
-      {canManageMenu && tab === "status" && effRestaurantId && (
-        <LocationSetter
-          restaurantId={effRestaurantId}
-          initialLat={restCoords?.lat}
-          initialLng={restCoords?.lng}
-        />
-      )}
-
-      {canManageMenu && tab === "menu" && (
-        <section>
-          <button
-            onClick={() => setAdding(true)}
-            className="anim-pop w-full bg-primary text-white rounded-full py-3 font-semibold text-sm pressable shadow-[0_4px_12px_rgba(255,71,87,0.3)]"
-          >
-            <i className="fa-solid fa-plus mr-2" aria-hidden />
-            Add a dish
-          </button>
+      {/* Add tab: inline wizard + menu list */}
+      {tab === "add" && canManageMenu && effRestaurantId && (
+        <>
+          <AddDishWizard
+            restaurantId={effRestaurantId}
+            inline
+            onAdded={() => void loadMenu()}
+          />
 
           {!menu ? (
             <div className="space-y-3 mt-5">
@@ -219,22 +227,12 @@ export default function RestaurantConsolePage() {
               ))}
             </ul>
           )}
-        </section>
+        </>
       )}
 
-      {canManageMenu && tab === "story" && (
-        <StoryManager restaurantId={effRestaurantId!} />
-      )}
-
-      {adding && effRestaurantId && (
-        <AddDishWizard
-          restaurantId={effRestaurantId}
-          onClose={() => setAdding(false)}
-          onAdded={() => {
-            setAdding(false);
-            void loadMenu();
-          }}
-        />
+      {/* Settings tab */}
+      {tab === "settings" && canManageMenu && effRestaurantId && (
+        <SettingsTab restaurantId={effRestaurantId} />
       )}
     </div>
   );

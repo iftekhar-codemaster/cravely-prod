@@ -11,6 +11,7 @@
     "bootstrap:admin": "node --env-file-if-exists=.env.local scripts/bootstrap-admin.ts"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.1116.0",
     "firebase": "^12.18.0",
     "leaflet": "^1.9.4",
     "next": "16.3.2",

@@ -13,6 +13,11 @@ export type Restaurant = {
   lat?: number;
   lng?: number;
   distanceKm: number;
+  description?: string;
+  cover?: string;
+  phone?: string;
+  whatsapp?: string;
+  openFrom?: string;
   openUntil: string;
   verified: boolean;
 };
@@ -27,6 +32,8 @@ export type Food = {
   image: string;
   category: string;
   description: string;
+  images?: string[];
+  pairsWith?: string[];
 };
 
 export type Review = {

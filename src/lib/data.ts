@@ -130,6 +130,14 @@ export async function getFoodsByRestaurant(restaurantId: string): Promise<Food[]
   return all.filter((f) => f.restaurantId === restaurantId);
 }
 
+export async function getFoodsByIds(ids: string[]): Promise<Food[]> {
+  if (!ids.length) return [];
+  const all = await getAllFoods();
+  return ids
+    .map((id) => all.find((f) => f.id === id))
+    .filter((f): f is Food => Boolean(f));
+}
+
 export async function searchFoods(query: string): Promise<Food[]> {
   const all = await getAllFoods();
   const q = query.toLowerCase();

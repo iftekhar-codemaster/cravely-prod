@@ -328,6 +328,12 @@ export default function ConsoleShell({ children }: { children: ReactNode }) {
               icon: "fa-database",
               superOnly: true,
             },
+            {
+              href: "/console/admin/storage",
+              label: "Storage",
+              icon: "fa-cloud-arrow-up",
+              superOnly: true,
+            },
             { href: "/console/admin/security", label: "Security", icon: "fa-key" },
           ] as { href: string; label: string; icon: string; superOnly?: boolean }[]).map((t) => {
             if (t.superOnly && profile?.role !== "super_admin") return null;
