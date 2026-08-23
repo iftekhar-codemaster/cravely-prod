@@ -1,6 +1,11 @@
 {
   "auth": {
-    "authorizedDomains": ["localhost"],
+    "authorizedDomains": [
+      "localhost",
+      "cravely.zone.id",
+      "cravely-prod.vercel.app",
+      "cravely-prod.firebaseapp.com"
+    ],
     "providers": {
       "emailPassword": true
     }

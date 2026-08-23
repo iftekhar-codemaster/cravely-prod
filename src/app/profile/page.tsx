@@ -69,7 +69,9 @@ export default function ProfilePage() {
     if (!auth?.currentUser) return;
     setVerifyState("sending");
     try {
-      await sendEmailVerification(auth.currentUser);
+      await sendEmailVerification(auth.currentUser, {
+        url: `${window.location.origin}/verify-email`,
+      });
       setVerifyState("sent");
     } catch (err) {
       const code = (err as { code?: string })?.code;

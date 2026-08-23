@@ -132,8 +132,8 @@ function MapModal({
         initialLat != null && initialLng != null ? [initialLat, initialLng] : [26.0333, 88.4667];
 
       const map = L.map(containerRef.current).setView(center, 13);
-      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-        attribution: "© OpenStreetMap",
+      L.tileLayer("https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png", {
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/">CARTO</a>',
       }).addTo(map);
 
       const icon = L.divIcon({
