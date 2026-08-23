@@ -1,0 +1,82 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() {
+      return request.auth != null;
+    }
+    function myRole() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role;
+    }
+    function isSuperAdmin() {
+      return signedIn() && myRole() == 'super_admin';
+    }
+    function isAdmin() {
+      return signedIn() && (myRole() == 'admin' || myRole() == 'super_admin');
+    }
+
+    // Catalog content — public read; admins manage
+    match /restaurants/{id} {
+      allow read: if true;
+      allow create: if isAdmin();
+      allow update: if isAdmin();
+      allow delete: if isSuperAdmin();
+    }
+    match /foods/{id} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+    match /stories/{id} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+    match /offers/{id} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+    match /cuisines/{id} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // User profiles — self-create/read; role changes only via super admin.
+    // The reserved owner email always escalates to super_admin.
+    function isOwnerEmail() {
+      return request.auth.token.email.lower() == 'itx.iftekhars@gmail.com';
+    }
+    match /users/{uid} {
+      allow get, list: if signedIn() && (request.auth.uid == uid || isAdmin());
+      allow create: if signedIn() && request.auth.uid == uid
+        && (request.resource.data.role == 'user' || isOwnerEmail());
+      allow update: if signedIn() && (
+        (request.auth.uid == uid
+          && request.resource.data.role == resource.data.role
+          && request.resource.data.uid == uid)
+        || isSuperAdmin()
+        || (isOwnerEmail() && request.resource.data.role == 'super_admin')
+        || (isAdmin()
+            && resource.data.role != 'super_admin'
+            && request.resource.data.role != 'super_admin'
+            && request.resource.data.role in ['user', 'restaurant', 'admin'])
+      );
+      allow delete: if false;
+    }
+
+    // Admin security config (passkeys + IP allowlist) — own doc only
+    match /adminSecurity/{uid} {
+      allow read, write: if signedIn() && request.auth.uid == uid && isAdmin();
+    }
+
+    // Restaurant applications — anyone authenticated can apply,
+    // admins review. Applicants can read their own application.
+    match /applications/{id} {
+      allow create: if signedIn()
+        && request.resource.data.status == 'pending'
+        && request.resource.data.uid == request.auth.uid;
+      allow read: if isAdmin()
+        || (signedIn() && resource.data.uid == request.auth.uid);
+      allow update: if isAdmin();
+      allow delete: if isSuperAdmin();
+    }
+  }
+}
