@@ -7,6 +7,7 @@ import { getDb } from "@/lib/firebase";
 import { useAuth } from "@/components/AuthProvider";
 import { ROLE_LABELS, type Role, type UserProfile } from "@/lib/user";
 import { startImpersonation } from "@/components/ImpersonationBanner";
+import { audit } from "@/lib/audit";
 
 const ROLES: Role[] = ["user", "restaurant", "admin"];
 
@@ -45,6 +46,7 @@ export default function AdminUsersPage() {
     setError(null);
     try {
       await updateDoc(doc(getDb()!, "users", uid), { role });
+      await audit("user.role.change", uid, { to: role });
       await load();
     } catch {
       setError("Only the Super Admin can change roles.");
@@ -55,6 +57,7 @@ export default function AdminUsersPage() {
     const next = on ? [...new Set([...current, perm])] : current.filter((p) => p !== perm);
     try {
       await updateDoc(doc(getDb()!, "users", uid), { perms: next });
+      await audit("user.perms", uid, { perm, on });
       setPermUser((u) => (u ? { ...u, perms: next } : u));
       await load();
     } catch {
@@ -70,6 +73,7 @@ export default function AdminUsersPage() {
       role: u.role === "restaurant" ? "restaurant" : "user",
       restaurantId: u.restaurantId,
     });
+    void audit("impersonation.start", u.uid, { email: u.email });
     router.push(u.role === "restaurant" ? "/console/restaurant" : "/");
   }
 

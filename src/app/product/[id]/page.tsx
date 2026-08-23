@@ -5,6 +5,7 @@ import { useParams } from "next/navigation";
 import CloseButton from "@/components/CloseButton";
 import ViewTracker from "@/components/ViewTracker";
 import SmartImg from "@/components/SmartImg";
+import LocationMap from "@/components/LocationMap";
 import { useAsyncData } from "@/lib/useAsyncData";
 import {
   getFood,
@@ -121,6 +122,7 @@ export default function ProductPage() {
               Open today until {restaurant.openUntil}
             </p>
           </div>
+          <LocationMap lat={restaurant.lat} lng={restaurant.lng} address={restaurant.address} />
         </section>
       )}
 

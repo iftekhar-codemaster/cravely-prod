@@ -28,7 +28,7 @@ service cloud.firestore {
     match /restaurants/{id} {
       allow read: if true;
       allow create: if isAdmin();
-      allow update: if isAdmin();
+      allow update: if isAdmin() || ownsRestaurant(id);
       allow delete: if isSuperAdmin();
     }
     match /foods/{id} {
@@ -80,9 +80,23 @@ service cloud.firestore {
       allow delete: if false;
     }
 
-    // Admin security config (passkeys + IP allowlist) — own doc only
+    // Admin security config (passkeys + IP allowlist) — own doc; owner sees all
     match /adminSecurity/{uid} {
-      allow read, write: if signedIn() && request.auth.uid == uid && isAdmin();
+      allow read, write: if (signedIn() && request.auth.uid == uid && isAdmin())
+        || isSuperAdmin();
+    }
+
+    // Append-only audit trail — anyone signed in can log, admins read
+    match /auditLogs/{id} {
+      allow create: if signedIn();
+      allow read: if isAdmin();
+      allow update, delete: if false;
+    }
+
+    // Global system settings — admins read, super admin writes
+    match /systemSettings/{id} {
+      allow read: if isAdmin();
+      allow write: if isSuperAdmin();
     }
 
     // Restaurant applications — anyone authenticated can apply,

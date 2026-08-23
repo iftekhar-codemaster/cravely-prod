@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { updateProfile } from "firebase/auth";
+import { sendEmailVerification, updateProfile } from "firebase/auth";
 import { getFirebaseAuth } from "@/lib/firebase";
 import { useAuth } from "@/components/AuthProvider";
 import { isAdminRole, ROLE_LABELS } from "@/lib/user";
@@ -24,6 +24,7 @@ export default function ProfilePage() {
   const [savingName, setSavingName] = useState(false);
   const [stats, setStats] = useState({ liked: 0, package: 0 });
   const [memberSince, setMemberSince] = useState<string | null>(null);
+  const [verifyState, setVerifyState] = useState<"idle" | "sending" | "sent" | "error" | "toomany">("idle");
 
   useEffect(() => {
     const t = setTimeout(() => {
@@ -61,6 +62,29 @@ export default function ProfilePage() {
       setSavingName(false);
       setEditing(false);
     }
+  }
+
+  async function sendVerification() {
+    const auth = getFirebaseAuth();
+    if (!auth?.currentUser) return;
+    setVerifyState("sending");
+    try {
+      await sendEmailVerification(auth.currentUser);
+      setVerifyState("sent");
+    } catch (err) {
+      const code = (err as { code?: string })?.code;
+      if (code === "auth/too-many-requests") {
+        setVerifyState("toomany");
+      } else {
+        setVerifyState("error");
+      }
+    }
+  }
+
+  async function confirmVerified() {
+    const auth = getFirebaseAuth();
+    await auth?.currentUser?.reload();
+    window.location.reload();
   }
 
   /* ---------- Signed out ---------- */
@@ -205,6 +229,51 @@ export default function ProfilePage() {
         <Group title="Account">
           <Row href="#" icon="fa-bell" title="Notifications" desc="Coming soon" muted disabled />
           <Row href="#" icon="fa-circle-question" title="Help & support" desc="Coming soon" muted disabled />
+          {!user.emailVerified && (
+            <div className="px-4 py-3">
+              <div className="flex items-center gap-3">
+                <span className="w-9 h-9 rounded-xl bg-primary/8 text-primary flex items-center justify-center flex-shrink-0">
+                  <i className="fa-solid fa-envelope text-sm" aria-hidden />
+                </span>
+                <span className="flex-1 min-w-0">
+                  <span className="block text-sm font-semibold">Verify your email</span>
+                  <span className="block text-[11px] text-text-light truncate">We&apos;ll send you a free verification link</span>
+                </span>
+              </div>
+              {verifyState === "sent" ? (
+                <div className="mt-3 anim-fade-up space-y-2">
+                  <p className="text-[11px] text-text-light">Verification link sent — check your inbox (and spam).</p>
+                  <button
+                    onClick={() => void confirmVerified()}
+                    className="pressable w-full rounded-xl bg-primary text-white text-xs font-semibold py-2.5 shadow-[0_6px_18px_rgba(255,71,87,0.35)]"
+                  >
+                    I&apos;ve verified — refresh
+                  </button>
+                </div>
+              ) : (
+                <div className="mt-3 anim-fade-up">
+                  <button
+                    onClick={() => void sendVerification()}
+                    disabled={verifyState === "sending"}
+                    className="pressable w-full rounded-xl border border-line bg-background text-xs font-semibold text-primary py-2.5 disabled:opacity-50"
+                  >
+                    {verifyState === "sending" ? (
+                      <>
+                        <i className="fa-solid fa-spinner fa-spin mr-1.5" aria-hidden />
+                        Sending…
+                      </>
+                    ) : verifyState === "toomany" ? (
+                      "Too many emails sent. Wait a minute and try again."
+                    ) : verifyState === "error" ? (
+                      "Could not send the email. Try again."
+                    ) : (
+                      "Send verification link"
+                    )}
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
           <SignOutRow onSignOut={() => void signOut().then(() => router.refresh())} />
         </Group>
 

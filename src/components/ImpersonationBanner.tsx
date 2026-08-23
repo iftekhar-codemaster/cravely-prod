@@ -53,6 +53,8 @@ export default function ImpersonationBanner() {
   if (!as) return null;
 
   function exit() {
+    if (!as) return;
+    void import("@/lib/audit").then((m) => m.audit("impersonation.stop", as.uid));
     stopImpersonation();
     setAs(null);
     router.push("/console/admin/users");

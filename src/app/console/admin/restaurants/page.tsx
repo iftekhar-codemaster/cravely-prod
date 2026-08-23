@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { collection, doc, getDocs, updateDoc } from "firebase/firestore";
 import { getDb } from "@/lib/firebase";
+import { audit } from "@/lib/audit";
 import type { Restaurant } from "@/lib/data";
 
 export default function AdminRestaurantsPage() {
@@ -42,6 +43,7 @@ export default function AdminRestaurantsPage() {
       await updateDoc(doc(getDb()!, "restaurants", r.id), {
         verified: !r.verified,
       });
+      void audit("restaurant.verified", r.id, { verified: !r.verified, name: r.name });
       await load();
     } catch {
       setError("Could not update — admin access required.");

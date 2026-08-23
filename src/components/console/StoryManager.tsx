@@ -12,6 +12,7 @@ import {
   where,
 } from "firebase/firestore";
 import { getDb } from "@/lib/firebase";
+import { audit } from "@/lib/audit";
 import { getAllRestaurants } from "@/lib/data";
 import SmartImg from "@/components/SmartImg";
 
@@ -68,6 +69,7 @@ export default function StoryManager({ restaurantId }: { restaurantId: string })
       });
       setImage("");
       setCaption("");
+      void audit("story.publish", restaurantId, { caption });
       await load();
     } catch (err) {
       console.warn(err);
@@ -79,6 +81,7 @@ export default function StoryManager({ restaurantId }: { restaurantId: string })
 
   async function remove(id: string) {
     await deleteDoc(doc(getDb()!, "stories", id));
+    void audit("story.delete", id);
     await load();
   }
 

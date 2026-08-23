@@ -6,6 +6,7 @@ import { addDoc, collection, serverTimestamp } from "firebase/firestore";
 import { useAuth } from "@/components/AuthProvider";
 import { getDb } from "@/lib/firebase";
 import { getCuisines } from "@/lib/data";
+import { audit } from "@/lib/audit";
 
 const inputCls =
   "w-full rounded-xl border border-line bg-card px-4 py-3 text-sm outline-none focus:border-primary transition-colors";
@@ -202,6 +203,7 @@ export function AddDishWizard({
         createdBy: user.uid,
         createdAt: serverTimestamp(),
       });
+      void audit("food.publish", restaurantId, { name: form.name, price: Math.round(priceNum) });
       onAdded();
     } catch (err) {
       console.warn(err);

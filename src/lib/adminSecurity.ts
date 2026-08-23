@@ -2,6 +2,7 @@
 
 import { doc, getDoc, setDoc, updateDoc, arrayUnion, arrayRemove } from "firebase/firestore";
 import { getDb } from "./firebase";
+import { audit } from "./audit";
 
 export type PasskeyRecord = {
   id: string; // base64url credential id
@@ -130,6 +131,7 @@ export async function enrollPasskey(uid: string, email: string): Promise<Passkey
     label: `Passkey · ${new Date().toLocaleDateString()}`,
     createdAt: Date.now(),
   };
+  void audit("security.passkey.enroll", uid);
   const db = getDb()!;
   await setDoc(
     doc(db, "adminSecurity", uid),
@@ -176,12 +178,14 @@ export async function removePasskey(uid: string, passkeyId: string): Promise<voi
   await updateDoc(doc(db, "adminSecurity", uid), {
     passkeys: arrayRemove(target),
   });
+  void audit("security.passkey.remove", uid, { label: target.label });
 }
 
 /** Emergency: clear all passkeys (e.g. after moving to a new domain). Requires password re-auth by caller. */
 export async function resetPasskeys(uid: string): Promise<void> {
   const db = getDb()!;
   await updateDoc(doc(db, "adminSecurity", uid), { passkeys: [] });
+  void audit("security.passkey.reset", uid, { via: "password recovery" });
 }
 
 // ---------- IP allowlist ----------
@@ -193,6 +197,7 @@ export async function addAllowedIp(uid: string, ip: string): Promise<void> {
     { allowedIps: arrayUnion(ip.trim()) },
     { merge: true },
   );
+  void audit("security.ip.add", uid, { ip });
 }
 
 export async function removeAllowedIp(uid: string, ip: string): Promise<void> {
@@ -200,11 +205,34 @@ export async function removeAllowedIp(uid: string, ip: string): Promise<void> {
   await updateDoc(doc(db, "adminSecurity", uid), {
     allowedIps: arrayRemove(ip.trim()),
   });
+  void audit("security.ip.remove", uid, { ip });
 }
 
 export async function markPasswordRotated(uid: string): Promise<void> {
   const db = getDb()!;
   await setDoc(doc(db, "adminSecurity", uid), { passwordRotated: true }, { merge: true });
+}
+
+// ---------- Global system settings (super admin) ----------
+
+export type SystemSettings = { passkeyRecovery: boolean };
+
+export async function getSystemSettings(): Promise<SystemSettings> {
+  const db = getDb();
+  if (!db) return { passkeyRecovery: true };
+  try {
+    const snap = await getDoc(doc(db, "systemSettings", "global"));
+    if (!snap.exists()) return { passkeyRecovery: true };
+    return { passkeyRecovery: snap.data().passkeyRecovery !== false };
+  } catch {
+    return { passkeyRecovery: true };
+  }
+}
+
+export async function setPasskeyRecovery(enabled: boolean): Promise<void> {
+  const db = getDb()!;
+  await setDoc(doc(db, "systemSettings", "global"), { passkeyRecovery: enabled }, { merge: true });
+  void audit("security.recovery.toggled", "systemSettings/global", { enabled });
 }
 
 export function ipMatchesAllowed(ip: string, allowed: string[]): boolean {

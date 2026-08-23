@@ -5,15 +5,19 @@ import { useAuth } from "@/components/AuthProvider";
 import {
   addAllowedIp,
   getAdminSecurity,
+  getSystemSettings,
   ipMatchesAllowed,
   removeAllowedIp,
   removePasskey,
+  setPasskeyRecovery,
   type AdminSecurity,
+  type SystemSettings,
 } from "@/lib/adminSecurity";
 
 export default function AdminSecurityPage() {
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const [security, setSecurity] = useState<AdminSecurity | null>(null);
+  const [sys, setSys] = useState<SystemSettings>({ passkeyRecovery: true });
   const [myIp, setMyIp] = useState("");
   const [newIp, setNewIp] = useState("");
   const [busy, setBusy] = useState(false);
@@ -22,6 +26,7 @@ export default function AdminSecurityPage() {
   const load = useCallback(async () => {
     if (!user) return;
     setSecurity(await getAdminSecurity(user.uid));
+    setSys(await getSystemSettings());
   }, [user]);
 
   useEffect(() => {
@@ -34,6 +39,7 @@ export default function AdminSecurityPage() {
     }, 0);
     return () => clearTimeout(t);
   }, [load]);
+
 
   async function run(fn: () => Promise<void>) {
     setError(null);
@@ -60,6 +66,19 @@ export default function AdminSecurityPage() {
   }
 
   const ipOk = ipMatchesAllowed(myIp, security.allowedIps);
+
+  async function toggleRecovery(enabled: boolean) {
+    setError(null);
+    setBusy(true);
+    try {
+      await setPasskeyRecovery(enabled);
+      setSys((s) => ({ passkeyRecovery: enabled }));
+    } catch {
+      setError("Could not update setting — super admin only.");
+    } finally {
+      setBusy(false);
+    }
+  }
 
   return (
     <div className="space-y-6">
@@ -202,6 +221,37 @@ export default function AdminSecurityPage() {
           </button>
         </div>
       </section>
+
+      {/* Global settings — super admin */}
+      {profile?.role === "super_admin" && (
+        <section className="rounded-xl border border-line bg-card p-4 shadow-card">
+          <h2 className="font-bold text-sm mb-1">
+            <i className="fa-solid fa-globe text-primary mr-2" aria-hidden />
+            Global settings
+          </h2>
+          <label className="flex items-center gap-3 rounded-xl border border-line px-4 py-3 mt-3 cursor-pointer pressable">
+            <span className="w-8 h-8 rounded-lg bg-primary/10 text-primary flex items-center justify-center flex-shrink-0">
+              <i className="fa-solid fa-key" aria-hidden />
+            </span>
+            <span className="flex-1 min-w-0">
+              <span className="block text-sm font-semibold">
+                Password recovery on passkey failure
+              </span>
+              <span className="block text-[11px] text-text-light leading-snug">
+                When a passkey can&apos;t verify (new domain, lost key), admins may
+                reset it with their password. Disable to force passkey-only access.
+              </span>
+            </span>
+            <input
+              type="checkbox"
+              checked={sys.passkeyRecovery}
+              onChange={(e) => void toggleRecovery(e.target.checked)}
+              disabled={busy}
+              className="accent-primary w-4 h-4 flex-shrink-0"
+            />
+          </label>
+        </section>
+      )}
     </div>
   );
 }

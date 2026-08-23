@@ -7,6 +7,7 @@ import {
   collection,
   deleteDoc,
   doc,
+  getDoc,
   getDocs,
   query,
   where,
@@ -14,9 +15,11 @@ import {
 import { useAuth } from "@/components/AuthProvider";
 import { getImpersonation } from "@/components/ImpersonationBanner";
 import { getDb } from "@/lib/firebase";
+import { audit } from "@/lib/audit";
 import type { Food } from "@/lib/data";
 import { ApplyWizard, AddDishWizard } from "@/components/console/Wizards";
 import StoryManager from "@/components/console/StoryManager";
+import LocationSetter from "@/components/console/LocationSetter";
 
 type Application = {
   id?: string;
@@ -46,6 +49,7 @@ export default function RestaurantConsolePage() {
   const [tab, setTab] = useState<Tab>("status");
   const [menu, setMenu] = useState<Food[] | null>(null);
   const [adding, setAdding] = useState(false);
+  const [restCoords, setRestCoords] = useState<{ lat: number; lng: number } | null>(null);
 
   const loadMyApplication = useCallback(async () => {
     if (!user) return;
@@ -94,8 +98,25 @@ export default function RestaurantConsolePage() {
     return () => clearTimeout(t);
   }, [tab, canManageMenu, loadMenu]);
 
+  useEffect(() => {
+    if (!effRestaurantId) return;
+    const t = setTimeout(async () => {
+      try {
+        const snap = await getDoc(doc(getDb()!, "restaurants", effRestaurantId));
+        const d = snap.data() as { lat?: number; lng?: number } | undefined;
+        if (d && typeof d.lat === "number" && typeof d.lng === "number") {
+          setRestCoords({ lat: d.lat, lng: d.lng });
+        }
+      } catch (e) {
+        console.warn("[cravely] restaurant load:", e);
+      }
+    }, 0);
+    return () => clearTimeout(t);
+  }, [effRestaurantId]);
+
   async function deleteDish(id: string) {
     await deleteDoc(doc(getDb()!, "foods", id));
+    void audit("food.delete", id);
     await loadMenu();
   }
 
@@ -141,6 +162,14 @@ export default function RestaurantConsolePage() {
 
       {(!canManageMenu || tab === "status") && (
         <StatusPanel app={app} isLive={Boolean(effRestaurantId)} />
+      )}
+
+      {canManageMenu && tab === "status" && effRestaurantId && (
+        <LocationSetter
+          restaurantId={effRestaurantId}
+          initialLat={restCoords?.lat}
+          initialLng={restCoords?.lng}
+        />
       )}
 
       {canManageMenu && tab === "menu" && (

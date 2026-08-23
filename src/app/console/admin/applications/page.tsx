@@ -11,6 +11,7 @@ import {
   updateDoc,
 } from "firebase/firestore";
 import { getDb } from "@/lib/firebase";
+import { audit } from "@/lib/audit";
 
 type Application = {
   id: string;
@@ -73,6 +74,11 @@ export default function AdminApplicationsPage() {
     try {
       const db = getDb()!;
       await updateDoc(doc(db, "applications", app.id), { status: decision });
+      await audit(
+        "application.decision",
+        app.id,
+        { decision, name: app.name, applicant: app.email },
+      );
       if (decision === "approved") {
         // Create the verified public restaurant listing
         const slug =

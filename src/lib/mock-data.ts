@@ -10,6 +10,8 @@ export type Restaurant = {
   image: string;
   logo: string;
   address: string;
+  lat?: number;
+  lng?: number;
   distanceKm: number;
   openUntil: string;
   verified: boolean;

@@ -7,6 +7,7 @@ import { useAuth } from "@/components/AuthProvider";
 import { isAdminRole } from "@/lib/user";
 import {
   getAdminSecurity,
+  getSystemSettings,
   ipMatchesAllowed,
   missingRequirements,
   resetPasskeys,
@@ -56,6 +57,7 @@ export default function ConsoleShell({ children }: { children: ReactNode }) {
   const [recoveryPw, setRecoveryPw] = useState("");
   const [recoveryBusy, setRecoveryBusy] = useState(false);
   const [recoveryErr, setRecoveryErr] = useState<string | null>(null);
+  const [recoveryEnabled, setRecoveryEnabled] = useState(true);
   const setupMode = pathname.startsWith("/console/admin/setup");
 
   async function recoverWithPassword(e: React.FormEvent) {
@@ -88,7 +90,11 @@ export default function ConsoleShell({ children }: { children: ReactNode }) {
       return;
     }
     try {
-      const security = await getAdminSecurity(user.uid);
+      const [security, sys] = await Promise.all([
+        getAdminSecurity(user.uid),
+        getSystemSettings(),
+      ]);
+      setRecoveryEnabled(sys.passkeyRecovery);
       const role = profile.role === "super_admin" ? "super_admin" : "admin";
       const missing = missingRequirements(security, role);
       if (setupMode) {
@@ -163,12 +169,14 @@ export default function ConsoleShell({ children }: { children: ReactNode }) {
               >
                 Retry passkey prompt
               </button>
-              <button
-                onClick={() => setShowRecovery(true)}
-                className="text-[11px] text-text-light hover:text-primary transition-colors"
-              >
-                Changed domain or lost the passkey? Recover with password →
-              </button>
+              {recoveryEnabled && (
+                <button
+                  onClick={() => setShowRecovery(true)}
+                  className="text-[11px] text-text-light hover:text-primary transition-colors"
+                >
+                  Changed domain or lost the passkey? Recover with password →
+                </button>
+              )}
             </div>
           )}
         </div>
@@ -295,9 +303,14 @@ export default function ConsoleShell({ children }: { children: ReactNode }) {
           </Link>
         </div>
         <nav className="px-2 pb-2 flex gap-1 overflow-x-auto no-scrollbar text-xs font-semibold">
-          {[
+          {([
             { href: "/console/admin", label: "Overview", icon: "fa-chart-line" },
-            { href: "/console/admin/users", label: "Users", icon: "fa-users" },
+            {
+              href: "/console/admin/users",
+              label: "Users",
+              icon: "fa-users",
+              superOnly: false,
+            },
             {
               href: "/console/admin/applications",
               label: "Applications",
@@ -308,8 +321,16 @@ export default function ConsoleShell({ children }: { children: ReactNode }) {
               label: "Restaurants",
               icon: "fa-store",
             },
+            { href: "/console/admin/audit", label: "Audit", icon: "fa-clipboard-list" },
+            {
+              href: "/console/admin/database",
+              label: "Database",
+              icon: "fa-database",
+              superOnly: true,
+            },
             { href: "/console/admin/security", label: "Security", icon: "fa-key" },
-          ].map((t) => {
+          ] as { href: string; label: string; icon: string; superOnly?: boolean }[]).map((t) => {
+            if (t.superOnly && profile?.role !== "super_admin") return null;
             const active = pathname === t.href;
             return (
               <Link
