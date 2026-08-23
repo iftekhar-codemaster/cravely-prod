@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import CloseButton from "@/components/CloseButton";
+import SmartImg from "@/components/SmartImg";
 import FoodCard from "@/components/FoodCard";
 import { getRestaurant, getFoodsByRestaurant } from "@/lib/data";
 
@@ -18,12 +19,8 @@ export default async function RestaurantDetailPage({
 
       {/* Hero */}
       <div className="relative h-48 bg-gray-200">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src={restaurant.image}
-          alt={restaurant.name}
-          className="w-full h-full object-cover"
-        />
+        <SmartImg src={restaurant.image} alt={restaurant.name} eager className="w-full h-full" imgClassName="w-full h-full object-cover" />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent" />
       </div>
 
       <section className="p-5 border-b border-line">

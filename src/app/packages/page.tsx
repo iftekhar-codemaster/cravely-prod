@@ -11,21 +11,20 @@ import {
   type Restaurant,
 } from "@/lib/data";
 import { getPackage, addToPackage } from "@/lib/store";
+import SmartImg from "@/components/SmartImg";
 
 export default function PackageBuilder() {
   const [allFoods, setAllFoods] = useState<Food[] | null>(null);
   const [allRestaurants, setAllRestaurants] = useState<Restaurant[]>([]);
   const [selected, setSelected] = useState<string[]>([]);
   const [radiusKm, setRadiusKm] = useState(5);
-  const [results, setResults] = useState<PackageResult[]>([]);
+  const [results, setResults] = useState<PackageResult[] | null>(null);
   const [comparing, setComparing] = useState(false);
 
-  // Load catalog + persisted bundle
   useEffect(() => {
     getAllFoods().then(setAllFoods);
     getAllRestaurants().then(setAllRestaurants);
     const sync = () => setSelected(getPackage());
-    // deferred so we don't call setState synchronously inside the effect
     const t = setTimeout(sync, 0);
     window.addEventListener("cravely:store", sync);
     return () => {
@@ -41,24 +40,21 @@ export default function PackageBuilder() {
   }, [allFoods]);
 
   const restaurantNames = useMemo(() => {
-    const map = new Map<string, string>();
-    allRestaurants.forEach((r) => map.set(r.id, r.name));
-    return map;
+    const m = new Map<string, string>();
+    allRestaurants.forEach((r) => m.set(r.id, r.name));
+    return m;
   }, [allRestaurants]);
 
   const selectedFoods = useMemo(
-    () =>
-      selected
-        .map((id) => foodById.get(id))
-        .filter((f): f is Food => Boolean(f)),
+    () => selected.map((id) => foodById.get(id)).filter((f): f is Food => Boolean(f)),
     [selected, foodById],
   );
-
-  const cheapest = results[0];
+  const bundleTotal = selectedFoods.reduce((s, f) => s + f.price, 0);
 
   function remove(id: string) {
     addToPackage(id); // toggles off since it's in the package
     setSelected((s) => s.filter((x) => x !== id));
+    setResults(null);
   }
 
   async function compare() {
@@ -72,200 +68,290 @@ export default function PackageBuilder() {
 
   if (!allFoods) {
     return (
-      <div className="px-4 pt-6">
-        <h1 className="text-xl font-semibold mb-1">
-          <i className="fa-solid fa-box-open text-primary mr-2" aria-hidden />
-          Package Builder
-        </h1>
-        <div className="space-y-3 mt-5">
-          {[0, 1, 2].map((i) => (
-            <div key={i} className="h-16 rounded-xl bg-gray-100 animate-pulse" />
-          ))}
-        </div>
+      <div className="px-4 pt-6 space-y-4">
+        <div className="h-7 w-52 rounded skel" />
+        <div className="h-20 rounded-2xl skel" />
+        {[0, 1].map((i) => (
+          <div key={i} className="h-16 rounded-xl skel" />
+        ))}
       </div>
     );
   }
 
   return (
-    <div className="px-4 pt-6">
-      <h1 className="text-xl font-semibold mb-1">
-        <i className="fa-solid fa-box-open text-primary mr-2" aria-hidden />
-        Package Builder
-      </h1>
-      <p className="text-sm text-text-light mb-5">
-        Bundle dishes and compare package prices across restaurants near you.
-      </p>
+    <div className="pb-6">
+      {/* Header */}
+      <header className="px-4 pt-6 anim-fade-up">
+        <h1 className="text-xl font-extrabold">
+          <i className="fa-solid fa-box-open text-primary mr-2" aria-hidden />
+          Package Builder
+        </h1>
+        <p className="text-xs text-text-light mt-1 max-w-[280px] leading-relaxed">
+          Bundle the dishes you want — we&apos;ll price the whole package at every
+          kitchen near you.
+        </p>
+      </header>
 
-      {/* Selected bundle */}
-      <section className="mb-6">
-        <h2 className="font-bold mb-3">Your bundle ({selectedFoods.length})</h2>
-        {selectedFoods.length === 0 ? (
-          <div className="rounded-xl border border-dashed border-line p-5 text-center text-sm text-text-light">
-            Nothing here yet. Add dishes from{" "}
-            <Link href="/" className="text-primary font-semibold">
-              Home
-            </Link>{" "}
-            or any product page (“Add to package”).
+      {/* Bundle summary card */}
+      <section className="px-4 mt-5 anim-fade-up" style={{ animationDelay: "80ms" }}>
+        <div className="rounded-2xl bg-gray-900 text-white p-5 shadow-lg relative overflow-hidden">
+          <i
+            className="fa-solid fa-bowl-food absolute -right-3 -bottom-3 text-[72px] opacity-10 rotate-12"
+            aria-hidden
+          />
+          <p className="text-[11px] uppercase tracking-widest text-white/60">
+            Your bundle
+          </p>
+          <div className="flex items-end gap-2 mt-1">
+            <span className="text-3xl font-extrabold">{selectedFoods.length}</span>
+            <span className="text-sm text-white/70 mb-1">
+              dish{selectedFoods.length === 1 ? "" : "es"}
+            </span>
+            {selectedFoods.length > 0 && (
+              <>
+                <span className="ml-auto mb-1 text-sm text-white/70">≈</span>
+                <span className="text-2xl font-extrabold text-[#ffb3ba] mb-0.5">
+                  ৳{bundleTotal}
+                </span>
+              </>
+            )}
           </div>
-        ) : (
-          <div className="space-y-3">
-            {selectedFoods.map((food) => (
-              <div
+          {selectedFoods.length === 0 && (
+            <p className="text-xs text-white/60 mt-2 leading-relaxed">
+              Empty for now — add dishes below or tap{" "}
+              <Link href="/" className="underline">
+                Home
+              </Link>
+              .
+            </p>
+          )}
+        </div>
+      </section>
+
+      {/* Bundle items */}
+      {selectedFoods.length > 0 && (
+        <section className="px-4 mt-4 anim-fade-up" style={{ animationDelay: "140ms" }}>
+          <ul className="space-y-2">
+            {selectedFoods.map((food, i) => (
+              <li
                 key={food.id}
-                className="flex items-center gap-3 bg-card rounded-xl p-3 shadow-card border border-line"
+                className="anim-fade-up flex items-center gap-3 rounded-xl border border-line bg-card p-2.5"
+                style={{ animationDelay: `${Math.min(i * 50, 300)}ms` }}
               >
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
+                <SmartImg
                   src={food.image}
                   alt=""
-                  className="w-12 h-12 rounded-lg object-cover flex-shrink-0"
+                  className="w-11 h-11 rounded-lg bg-gray-100 flex-shrink-0"
+                  imgClassName="w-full h-full object-cover"
                 />
-                <div className="flex-1 min-w-0">
-                  <Link
-                    href={`/product/${food.id}`}
-                    className="font-semibold text-sm truncate block hover:text-primary"
-                  >
-                    {food.name}
-                  </Link>
-                  <p className="text-xs text-text-light truncate">
+                <Link
+                  href={`/product/${food.id}`}
+                  className="flex-1 min-w-0 text-sm font-semibold truncate hover:text-primary"
+                >
+                  {food.name}
+                  <span className="block text-[11px] text-text-light font-normal truncate">
                     {restaurantNames.get(food.restaurantId) ?? ""}
-                  </p>
-                </div>
+                  </span>
+                </Link>
                 <span className="font-bold text-sm">৳{food.price}</span>
                 <button
                   onClick={() => remove(food.id)}
                   aria-label={`Remove ${food.name}`}
-                  className="w-7 h-7 rounded-full bg-background text-text-light hover:text-primary transition-colors"
+                  className="w-7 h-7 rounded-full bg-background text-text-light hover:text-red-500 transition-colors flex-shrink-0"
                 >
-                  <i className="fa-solid fa-xmark" aria-hidden />
+                  <i className="fa-solid fa-xmark text-xs" aria-hidden />
                 </button>
-              </div>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
+      {/* Radius + compare */}
+      <section className="px-4 mt-6 anim-fade-up" style={{ animationDelay: "200ms" }}>
+        <div className={`rounded-2xl border p-5 ${selectedFoods.length ? "border-line bg-card shadow-card" : "border-dashed border-line opacity-60"}`}>
+          <div className="flex items-center justify-between mb-3">
+            <span className="font-bold text-sm">Search radius</span>
+            <span className="bg-primary/10 text-primary font-extrabold text-sm rounded-full px-3 py-1">
+              {radiusKm} km
+            </span>
+          </div>
+          <input
+            id="radius"
+            type="range"
+            min={1}
+            max={10}
+            value={radiusKm}
+            onChange={(e) => setRadiusKm(Number(e.target.value))}
+            disabled={selectedFoods.length === 0}
+            className="w-full accent-primary"
+            aria-label="Search radius in kilometers"
+          />
+          <div className="flex justify-between text-[10px] text-text-light mt-1 px-0.5">
+            {[1, 3, 5, 7, 10].map((k) => (
+              <span key={k}>{k}</span>
             ))}
           </div>
-        )}
-      </section>
-
-      {/* Radius input + compare */}
-      <section className="mb-6">
-        <label className="block font-bold mb-2" htmlFor="radius">
-          Search radius: {radiusKm} km
-        </label>
-        <input
-          id="radius"
-          type="range"
-          min={1}
-          max={10}
-          value={radiusKm}
-          onChange={(e) => setRadiusKm(Number(e.target.value))}
-          disabled={selectedFoods.length === 0}
-          className="w-full accent-primary"
-        />
-        <button
-          onClick={compare}
-          disabled={selectedFoods.length === 0 || comparing}
-          className="mt-4 w-full bg-primary text-white py-3 rounded-full font-semibold transition-shadow enabled:hover:shadow-[0_4px_10px_rgba(255,71,87,0.3)] disabled:opacity-40"
-        >
-          {comparing ? (
-            <>
-              <i className="fa-solid fa-spinner fa-spin mr-2" aria-hidden />
-              Comparing nearby…
-            </>
-          ) : (
-            <>
-              <i className="fa-solid fa-wand-magic-sparkles mr-2" aria-hidden />
-              Find package prices nearby
-            </>
-          )}
-        </button>
+          <button
+            onClick={() => void compare()}
+            disabled={selectedFoods.length === 0 || comparing}
+            className="mt-4 w-full bg-primary text-white py-3 rounded-full font-semibold pressable transition-shadow enabled:hover:shadow-[0_6px_18px_rgba(255,71,87,0.35)] disabled:opacity-40"
+          >
+            {comparing ? (
+              <>
+                <i className="fa-solid fa-spinner fa-spin mr-2" aria-hidden />
+                Checking kitchens…
+              </>
+            ) : (
+              <>
+                <i className="fa-solid fa-wand-magic-sparkles mr-2" aria-hidden />
+                Compare package prices
+              </>
+            )}
+          </button>
+        </div>
       </section>
 
       {/* Results */}
-      {results.length > 0 && (
-        <section className="pb-4">
-          <h2 className="font-bold mb-3">
-            Packages within {radiusKm} km ({results.length})
+      {comparing && (
+        <section className="px-4 mt-5 space-y-3">
+          {[0, 1].map((i) => (
+            <div key={i} className="h-28 rounded-xl skel" />
+          ))}
+        </section>
+      )}
+
+      {!comparing && results && results.length > 0 && (
+        <section className="px-4 mt-6">
+          <h2 className="font-bold text-sm mb-3">
+            Within {radiusKm} km ·{" "}
+            <span className="text-text-light font-normal">{results.length} match{results.length === 1 ? "" : "es"}</span>
           </h2>
-          <div className="space-y-3">
+          <div className="space-y-3 pb-24">
             {results.map((result, i) => {
               const missing = selected.length - result.items.length;
+              const cheapest = results[0];
+              const saving = cheapest.total - result.total;
               return (
                 <div
                   key={result.restaurant.id}
-                  className={`bg-card rounded-xl p-4 shadow-card border ${
-                    i === 0 ? "border-primary" : "border-line"
+                  className={`anim-fade-up rounded-2xl border overflow-hidden ${
+                    i === 0 ? "border-primary shadow-[0_6px_18px_rgba(255,71,87,0.15)]" : "border-line bg-card shadow-card"
                   }`}
+                  style={{ animationDelay: `${Math.min(i * 60, 300)}ms` }}
                 >
-                  <div className="flex justify-between items-start gap-3 mb-3">
-                    <div className="min-w-0">
-                      <div className="flex items-center gap-1.5 font-semibold">
-                        {i === 0 && (
-                          <span className="bg-primary text-white text-[10px] px-2 py-0.5 rounded-full font-bold">
-                            BEST
-                          </span>
-                        )}
-                        <span className="truncate">{result.restaurant.name}</span>
-                      </div>
-                      <p className="text-xs text-text-light mt-0.5">
-                        {result.restaurant.distanceKm} km · ⭐ {result.restaurant.rating}
-                      </p>
-                    </div>
-                    <div className="text-right flex-shrink-0">
-                      <div className="font-extrabold text-lg text-primary">
-                        ৳{result.total}
-                      </div>
-                      {cheapest && i !== 0 && cheapest.total !== result.total && (
-                        <div className="text-[11px] text-text-light line-through">
-                          was your baseline
-                        </div>
-                      )}
-                    </div>
+                  <div className={`px-4 py-2 flex items-center gap-2 ${i === 0 ? "bg-primary text-white" : "bg-background"}`}>
+                    {i === 0 ? (
+                      <>
+                        <i className="fa-solid fa-crown text-xs" aria-hidden />
+                        <span className="text-xs font-bold uppercase tracking-wide">
+                          Best deal
+                        </span>
+                      </>
+                    ) : (
+                      <span className="text-xs font-bold text-text-light">
+                        #{i + 1}
+                      </span>
+                    )}
+                    {saving > 0 && i !== 0 && (
+                      <span className="ml-auto text-[11px] text-red-500 font-bold">
+                        +৳{saving} vs best
+                      </span>
+                    )}
+                    {i === 0 && (
+                      <span className="ml-auto text-[11px] font-bold">
+                        you save ৳{Math.max(0, -saving)}
+                      </span>
+                    )}
                   </div>
-                  <ul className="space-y-1.5">
-                    {result.items.map((item) => (
-                      <li key={item.food.id} className="flex justify-between text-sm">
-                        <span className="text-text-dark">{item.food.name}</span>
-                        <span className="text-text-light">৳{item.price}</span>
-                      </li>
-                    ))}
-                  </ul>
-                  {missing > 0 && (
-                    <p className="text-[11px] text-text-light mt-2 italic">
-                      {missing} item(s) matched to a similar category dish at this restaurant.
-                    </p>
-                  )}
+
+                  <div className="p-4">
+                    <div className="flex justify-between items-start gap-3">
+                      <div className="min-w-0">
+                        <Link
+                          href={`/restaurants/${result.restaurant.id}`}
+                          className="font-bold text-sm truncate hover:text-primary"
+                        >
+                          {result.restaurant.name}
+                          {result.restaurant.verified && (
+                            <i className="fa-solid fa-circle-check text-primary text-xs ml-1.5" title="Verified" aria-label="Verified" />
+                          )}
+                        </Link>
+                        <p className="text-xs text-text-light mt-0.5">
+                          {result.restaurant.distanceKm} km · ⭐ {result.restaurant.rating}
+                        </p>
+                      </div>
+                      <div className="text-right flex-shrink-0">
+                        <div className={`font-extrabold text-xl ${i === 0 ? "text-primary" : ""}`}>
+                          ৳{result.total}
+                        </div>
+                        {missing > 0 && (
+                          <div className="text-[10px] text-text-light">
+                            similar swap ×{missing}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    <ul className="mt-3 space-y-1 border-t border-line pt-3">
+                      {result.items.map((item) => (
+                        <li key={item.food.id} className="flex justify-between text-xs">
+                          <span className="truncate">{item.food.name}</span>
+                          <span className="text-text-light ml-2 flex-shrink-0">৳{item.price}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
                 </div>
               );
             })}
           </div>
-          {results.length === 0 && (
-            <p className="text-sm text-text-light text-center py-6">
-              No restaurant within {radiusKm} km offers this full bundle. Try a bigger radius.
-            </p>
-          )}
         </section>
       )}
 
-      {/* Quick add suggestions */}
-      <section className="pb-4">
-        <h2 className="font-bold mb-3">Quick add popular dishes</h2>
+      {!comparing && results && results.length === 0 && (
+        <div className="px-4 mt-6">
+          <div className="rounded-2xl border border-dashed border-line p-8 text-center anim-pop">
+            <i className="fa-solid fa-store-slash text-3xl text-text-light mb-3" aria-hidden />
+            <p className="text-sm text-text-light">
+              No kitchen within {radiusKm} km offers this full bundle.
+              <br />
+              Try widening the radius.
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* Quick add */}
+      <section className="px-4 pb-24">
+        <h2 className="font-bold text-sm mt-8 mb-3">
+          Quick add
+          <span className="text-text-light font-normal"> — popular right now</span>
+        </h2>
         <div className="flex gap-2 flex-wrap">
-          {allFoods.slice(0, 8).map((food) => (
-            <button
-              key={food.id}
-              onClick={() =>
-                setSelected((s) =>
-                  s.includes(food.id) ? s.filter((x) => x !== food.id) : [...s, food.id],
-                )
-              }
-              className={`text-xs px-3 py-1.5 rounded-full border transition-colors ${
-                selected.includes(food.id)
-                  ? "bg-primary text-white border-primary"
-                  : "bg-card text-text-light border-line"
-              }`}
-            >
-              + {food.name}
-            </button>
-          ))}
+          {allFoods.slice(0, 10).map((food) => {
+            const on = selected.includes(food.id);
+            return (
+              <button
+                key={food.id}
+                onClick={() => {
+                  addToPackage(food.id);
+                  setSelected((s) =>
+                    on ? s.filter((x) => x !== food.id) : [...s, food.id],
+                  );
+                  setResults(null);
+                }}
+                className={`pressable text-xs px-3 py-2 rounded-full border transition-colors ${
+                  on
+                    ? "bg-primary text-white border-primary font-semibold"
+                    : "bg-card text-text-light border-line"
+                }`}
+              >
+                <i className={`fa-${on ? "solid fa-check" : "regular fa-plus"} mr-1.5`} aria-hidden />
+                {food.name}
+              </button>
+            );
+          })}
         </div>
       </section>
     </div>

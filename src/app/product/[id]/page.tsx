@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import CloseButton from "@/components/CloseButton";
 import ViewTracker from "@/components/ViewTracker";
+import SmartImg from "@/components/SmartImg";
 import { useAsyncData } from "@/lib/useAsyncData";
 import {
   getFood,
@@ -61,11 +62,12 @@ export default function ProductPage() {
 
       {/* Image */}
       <section className="anim-fade-up relative w-full aspect-square bg-gray-200 flex items-center justify-center">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
+        <SmartImg
           src={food.image}
           alt={food.name}
-          className="w-full h-full object-cover"
+          eager
+          className="w-full h-full"
+          imgClassName="w-full h-full object-cover"
         />
         <div className="absolute bottom-4 right-4 bg-gray-900 text-white font-bold px-4 py-2 rounded-full shadow-lg text-lg">
           ৳{food.price}
@@ -155,12 +157,11 @@ export default function ProductPage() {
               className="anim-fade-up flex items-center gap-4 pressable"
               style={{ animationDelay: `${Math.min(i * 70, 280)}ms` }}
             >
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
+              <SmartImg
                 src={item.image}
                 alt={item.name}
-                loading="lazy"
-                className="w-14 h-14 bg-gray-200 rounded-lg flex-shrink-0 object-cover"
+                className="w-14 h-14 rounded-lg bg-gray-200 flex-shrink-0"
+                imgClassName="w-full h-full object-cover"
               />
               <div className="flex-1 min-w-0">
                 <h3 className="font-semibold truncate">{item.name}</h3>

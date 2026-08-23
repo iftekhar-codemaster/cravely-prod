@@ -1,42 +1,18 @@
-import Link from "next/link";
 import SearchBar from "@/components/SearchBar";
 import { getStories } from "@/lib/data";
 import ForYou from "@/components/home/ForYou";
+import HomeHeader from "@/components/home/HomeHeader";
 import { HomeOffers, HomeCuisines, HomeFoods } from "@/components/home/HomeSections";
 import Reveal from "@/components/home/Reveal";
-
-function greeting(): string {
-  const h = new Date().getHours();
-  if (h < 5) return "Late-night cravings?";
-  if (h < 12) return "Good morning ☀";
-  if (h < 17) return "Good afternoon";
-  if (h < 21) return "Good evening";
-  return "Dinner time!";
-}
 
 export default async function HomePage() {
   const stories = await getStories();
 
   return (
     <div>
-      {/* Hero greeting — anchors the eye before anything moves */}
+      {/* Header — live counts + rotating crave line */}
       <section className="px-4 pt-6">
-        <div className="anim-fade-up flex items-end justify-between">
-          <div>
-            <p className="text-xs text-text-light">{greeting()}</p>
-            <h1 className="text-2xl font-extrabold leading-tight mt-0.5">
-              What are you{" "}
-              <span className="text-primary">craving</span> today?
-            </h1>
-          </div>
-          <Link
-            href="/maps"
-            className="text-[11px] font-semibold text-primary border border-primary/30 rounded-full px-2.5 py-1.5 pressable whitespace-nowrap"
-          >
-            <i className="fa-solid fa-location-dot mr-1" aria-hidden />
-            Thakurgaon
-          </Link>
-        </div>
+        <HomeHeader />
       </section>
 
       {/* Search */}
