@@ -12,6 +12,7 @@ import {
   addAllowedIp,
   enrollPasskey,
   getAdminSecurity,
+  getSystemSettings,
   markPasswordRotated,
   missingRequirements,
   passwordScore,
@@ -40,10 +41,11 @@ export default function AdminSetupPage() {
 
   useEffect(() => {
     if (loading || !user || !profile) return;
-    void getAdminSecurity(user.uid).then((s) => {
+    void getAdminSecurity(user.uid).then(async (s) => {
       if (!user || !profile) return;
       const role = profile.role === "super_admin" ? "super_admin" : "admin";
-      const missing = missingRequirements(s, role);
+      const sys = await getSystemSettings();
+      const missing = missingRequirements(s, role, sys.ipAllowlistEnabled);
       if (missing.length === 0) {
         setStep("done");
         return;
@@ -58,8 +60,9 @@ export default function AdminSetupPage() {
     try {
       await enrollPasskey(user!.uid, user!.email!);
       const s = await getAdminSecurity(user!.uid);
+      const sys = await getSystemSettings();
       const role = profile?.role === "super_admin" ? "super_admin" : "admin";
-      const missing = missingRequirements(s, role);
+      const missing = missingRequirements(s, role, sys.ipAllowlistEnabled);
       if (role === "super_admin") {
         setStep(missing.includes("password") ? "password" : "ip");
       } else {

@@ -16,6 +16,7 @@ import {
   ipMatchesAllowed,
   removeAllowedIp,
   removePasskey,
+  setIpAllowlistEnabled,
   setPasskeyRecovery,
   verifyPasskey,
   type AdminSecurity,
@@ -25,7 +26,7 @@ import {
 export default function AdminSecurityPage() {
   const { user, profile } = useAuth();
   const [security, setSecurity] = useState<AdminSecurity | null>(null);
-  const [sys, setSys] = useState<SystemSettings>({ passkeyRecovery: true });
+  const [sys, setSys] = useState<SystemSettings>({ passkeyRecovery: true, ipAllowlistEnabled: true });
   const [myIp, setMyIp] = useState("");
   const [newIp, setNewIp] = useState("");
   const [busy, setBusy] = useState(false);
@@ -88,7 +89,7 @@ export default function AdminSecurityPage() {
     setBusy(true);
     try {
       await setPasskeyRecovery(enabled);
-      setSys({ passkeyRecovery: enabled });
+      setSys((s) => ({ ...s, passkeyRecovery: enabled }));
     } catch {
       setError("Could not update setting — super admin only.");
     } finally {
@@ -375,6 +376,29 @@ export default function AdminSecurityPage() {
               type="checkbox"
               checked={sys.passkeyRecovery}
               onChange={(e) => void toggleRecovery(e.target.checked)}
+              disabled={busy}
+              className="accent-primary w-4 h-4 flex-shrink-0"
+            />
+          </label>
+
+          <label className="flex items-center gap-3 rounded-xl border border-line px-4 py-3 mt-2 cursor-pointer pressable">
+            <span className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${sys.ipAllowlistEnabled ? "bg-primary/10 text-primary" : "bg-gray-100 text-text-light"}`}>
+              <i className="fa-solid fa-network-wired" aria-hidden />
+            </span>
+            <span className="flex-1 min-w-0">
+              <span className="block text-sm font-semibold">
+                IP allowlist enforcement
+              </span>
+              <span className="block text-[11px] text-text-light leading-snug">
+                {sys.ipAllowlistEnabled
+                  ? "ON — console only opens from allowed IPs. Turn OFF if your network rotates IPs (e.g. behind Cloudflare)."
+                  : "OFF — any IP can open the console (passkey still required)."}
+              </span>
+            </span>
+            <input
+              type="checkbox"
+              checked={sys.ipAllowlistEnabled}
+              onChange={(e) => void run(() => setIpAllowlistEnabled(e.target.checked))}
               disabled={busy}
               className="accent-primary w-4 h-4 flex-shrink-0"
             />

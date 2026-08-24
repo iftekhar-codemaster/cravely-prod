@@ -35,16 +35,17 @@ export function isSetupComplete(s: AdminSecurity): boolean {
   return s.passwordRotated && s.passkeys.length > 0 && s.allowedIps.length > 0;
 }
 
-/** Admins need a passkey; super admins additionally need rotated password + IPs. */
+/** Admins need a passkey; super admins additionally need rotated password + IPs (when IP enforcement is on). */
 export function missingRequirements(
   s: AdminSecurity,
   role: "admin" | "super_admin",
+  ipAllowlistEnabled = true,
 ): string[] {
   const missing: string[] = [];
   if (s.passkeys.length === 0) missing.push("passkey");
   if (role === "super_admin") {
     if (!s.passwordRotated) missing.push("password");
-    if (s.allowedIps.length === 0) missing.push("ip");
+    if (ipAllowlistEnabled && s.allowedIps.length === 0) missing.push("ip");
   }
   return missing;
 }
@@ -215,17 +216,21 @@ export async function markPasswordRotated(uid: string): Promise<void> {
 
 // ---------- Global system settings (super admin) ----------
 
-export type SystemSettings = { passkeyRecovery: boolean };
+export type SystemSettings = { passkeyRecovery: boolean; ipAllowlistEnabled: boolean };
 
 export async function getSystemSettings(): Promise<SystemSettings> {
   const db = getDb();
-  if (!db) return { passkeyRecovery: true };
+  if (!db) return { passkeyRecovery: true, ipAllowlistEnabled: true };
   try {
     const snap = await getDoc(doc(db, "systemSettings", "global"));
-    if (!snap.exists()) return { passkeyRecovery: true };
-    return { passkeyRecovery: snap.data().passkeyRecovery !== false };
+    if (!snap.exists()) return { passkeyRecovery: true, ipAllowlistEnabled: true };
+    const d = snap.data();
+    return {
+      passkeyRecovery: d.passkeyRecovery !== false,
+      ipAllowlistEnabled: d.ipAllowlistEnabled !== false,
+    };
   } catch {
-    return { passkeyRecovery: true };
+    return { passkeyRecovery: true, ipAllowlistEnabled: true };
   }
 }
 
@@ -233,6 +238,12 @@ export async function setPasskeyRecovery(enabled: boolean): Promise<void> {
   const db = getDb()!;
   await setDoc(doc(db, "systemSettings", "global"), { passkeyRecovery: enabled }, { merge: true });
   void audit("security.recovery.toggled", "systemSettings/global", { enabled });
+}
+
+export async function setIpAllowlistEnabled(enabled: boolean): Promise<void> {
+  const db = getDb()!;
+  await setDoc(doc(db, "systemSettings", "global"), { ipAllowlistEnabled: enabled }, { merge: true });
+  void audit("security.ip.toggled", "systemSettings/global", { enabled });
 }
 
 export function ipMatchesAllowed(ip: string, allowed: string[]): boolean {

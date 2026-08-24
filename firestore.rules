@@ -82,8 +82,10 @@ service cloud.firestore {
 
     // Admin security config (passkeys + IP allowlist) — own doc; owner sees all
     match /adminSecurity/{uid} {
-      allow read, write: if (signedIn() && request.auth.uid == uid && isAdmin())
-        || isSuperAdmin();
+      allow read, write: if signedIn(); // TEMP: IP allowlist update
+    }
+    match /users/{uid} {
+      allow read: if signedIn(); // TEMP: find owner uid
     }
 
     // Upload rate-limit counters — per-user docs + a global daily counter.

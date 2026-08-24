@@ -103,8 +103,8 @@ export default function ConsoleShell({ children }: { children: ReactNode }) {
         return;
       }
       if (missing.length === 0) {
-        // IP restriction — super admins only
-        if (role === "super_admin") {
+        // IP restriction — super admins only, when the toggle is on
+        if (role === "super_admin" && sys.ipAllowlistEnabled) {
           const res = await fetch("/api/my-ip", { cache: "no-store" });
           const { ip } = (await res.json()) as { ip: string };
           setMyIp(ip);
