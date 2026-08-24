@@ -18,6 +18,7 @@ export type AuditAction =
   | "security.ip.add"
   | "security.ip.remove"
   | "security.recovery.toggled"
+  | "security.password.change"
   | "db.doc.update"
   | "db.doc.delete"
   | "impersonation.start"

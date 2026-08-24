@@ -1,7 +1,14 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import {
+  GoogleAuthProvider,
+  reauthenticateWithPopup,
+  updatePassword,
+} from "firebase/auth";
 import { useAuth } from "@/components/AuthProvider";
+import { getFirebaseAuth } from "@/lib/firebase";
+import { audit } from "@/lib/audit";
 import {
   addAllowedIp,
   getAdminSecurity,
@@ -10,6 +17,7 @@ import {
   removeAllowedIp,
   removePasskey,
   setPasskeyRecovery,
+  verifyPasskey,
   type AdminSecurity,
   type SystemSettings,
 } from "@/lib/adminSecurity";
@@ -22,6 +30,14 @@ export default function AdminSecurityPage() {
   const [newIp, setNewIp] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // ---- Password change: passkey-gated, no old password ----
+  const [pwVerified, setPwVerified] = useState(false);
+  const [pwNew, setPwNew] = useState("");
+  const [pwConfirm, setPwConfirm] = useState("");
+  const [pwBusy, setPwBusy] = useState(false);
+  const [pwMsg, setPwMsg] = useState<string | null>(null);
+  const [pwErr, setPwErr] = useState<string | null>(null);
+
 
   const load = useCallback(async () => {
     if (!user) return;
@@ -72,11 +88,69 @@ export default function AdminSecurityPage() {
     setBusy(true);
     try {
       await setPasskeyRecovery(enabled);
-      setSys((s) => ({ passkeyRecovery: enabled }));
+      setSys({ passkeyRecovery: enabled });
     } catch {
       setError("Could not update setting — super admin only.");
     } finally {
       setBusy(false);
+    }
+  }
+
+  async function verifyWithPasskey() {
+    if (!user) return;
+    setPwErr(null);
+    setPwBusy(true);
+    try {
+      setPwVerified(await verifyPasskey(user.uid));
+      if (!setPwVerified) setPwErr("Passkey verification failed.");
+    } finally {
+      setPwBusy(false);
+    }
+  }
+
+  async function changePassword(e: React.FormEvent) {
+    e.preventDefault();
+    const auth = getFirebaseAuth();
+    if (!auth?.currentUser) return;
+    setPwErr(null);
+    setPwMsg(null);
+    if (pwNew.length < 8) return setPwErr("Password must be at least 8 characters.");
+    if (pwNew !== pwConfirm) return setPwErr("Passwords do not match.");
+    setPwBusy(true);
+    try {
+      await updatePassword(auth.currentUser, pwNew);
+      setPwMsg("Password updated.");
+      setPwNew("");
+      setPwConfirm("");
+      setPwVerified(false);
+      void audit("security.password.change", user!.uid);
+    } catch (err) {
+      const code = (err as { code?: string }).code ?? "";
+      if (code === "auth/requires-recent-login") {
+        // Try silent re-auth via Google popup (works when Google is linked)
+        try {
+          await reauthenticateWithPopup(auth.currentUser, new GoogleAuthProvider());
+          await updatePassword(auth.currentUser, pwNew);
+          setPwMsg("Password updated (re-verified via Google).");
+          setPwNew("");
+          setPwConfirm("");
+          setPwVerified(false);
+          void audit("security.password.change", user!.uid, { reauth: "google" });
+        } catch (err2) {
+          const code2 = (err2 as { code?: string }).code ?? "";
+          setPwErr(
+            code2 === "auth/popup-closed-by-user"
+              ? "Session too old — complete the Google popup to confirm it's you."
+              : code2 === "auth/no-such-provider" || code2 === "auth/user-mismatch"
+                ? "Session too old. Sign out, sign in, then change the password."
+                : "Could not update password. Try again.",
+          );
+        }
+      } else {
+        setPwErr("Could not update password. Try again.");
+      }
+    } finally {
+      setPwBusy(false);
     }
   }
 
@@ -220,6 +294,61 @@ export default function AdminSecurityPage() {
             Add
           </button>
         </div>
+      </section>
+
+      {/* Password change — passkey-gated, no old password */}
+      <section className="rounded-xl border border-line bg-card p-4 shadow-card">
+        <h2 className="font-bold text-sm mb-1">
+          <i className="fa-solid fa-key text-primary mr-2" aria-hidden />
+          Change password
+        </h2>
+        <p className="text-[11px] text-text-light mb-3">
+          Verified with your passkey — your current password is never asked.
+        </p>
+
+        {!pwVerified ? (
+          <button
+            onClick={() => void verifyWithPasskey()}
+            disabled={pwBusy}
+            className="w-full bg-primary text-white rounded-full py-2.5 font-semibold text-xs disabled:opacity-50 pressable"
+          >
+            <i className="fa-solid fa-fingerprint mr-2" aria-hidden />
+            {pwBusy ? "Waiting for passkey…" : "Verify with passkey to continue"}
+          </button>
+        ) : (
+          <form onSubmit={changePassword} className="space-y-3 anim-fade-up">
+            <input
+              type="password"
+              placeholder="New password (min 8 chars)"
+              value={pwNew}
+              onChange={(e) => setPwNew(e.target.value)}
+              required
+              minLength={8}
+              className="w-full rounded-xl border border-line bg-background px-4 py-2.5 text-sm outline-none focus:border-primary"
+            />
+            <input
+              type="password"
+              placeholder="Repeat new password"
+              value={pwConfirm}
+              onChange={(e) => setPwConfirm(e.target.value)}
+              required
+              minLength={8}
+              className="w-full rounded-xl border border-line bg-background px-4 py-2.5 text-sm outline-none focus:border-primary"
+            />
+            <button
+              disabled={pwBusy}
+              className="w-full bg-primary text-white rounded-full py-2.5 font-semibold text-xs disabled:opacity-50 pressable"
+            >
+              {pwBusy ? "Updating…" : "Update password"}
+            </button>
+          </form>
+        )}
+        {pwErr && (
+          <p className="mt-3 rounded-lg bg-red-50 px-3 py-2 text-xs text-primary">{pwErr}</p>
+        )}
+        {pwMsg && (
+          <p className="mt-3 rounded-lg bg-green-50 px-3 py-2 text-xs text-green-700">{pwMsg}</p>
+        )}
       </section>
 
       {/* Global settings — super admin */}

@@ -3,9 +3,10 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { sendEmailVerification, updateProfile } from "firebase/auth";
+import { updateProfile, sendEmailVerification } from "firebase/auth";
 import { getFirebaseAuth } from "@/lib/firebase";
 import { useAuth } from "@/components/AuthProvider";
+import { connectGoogle, googleProviderData } from "@/components/AuthProvider";
 import { isAdminRole, ROLE_LABELS } from "@/lib/user";
 import { getLiked, getPackage } from "@/lib/store";
 
@@ -230,6 +231,7 @@ export default function ProfilePage() {
         </Group>
 
         <Group title="Account">
+          <GoogleConnectRow />
           <Row href="#" icon="fa-bell" title="Notifications" desc="Coming soon" muted disabled />
           <Row href="#" icon="fa-circle-question" title="Help & support" desc="Coming soon" muted disabled />
           {!user.emailVerified && (
@@ -283,6 +285,59 @@ export default function ProfilePage() {
         <p className="text-center text-[10px] text-text-light pt-2">
           Cravely · Thakurgaon {memberSince ? `· with you since ${memberSince}` : ""}
         </p>
+      </div>
+    </div>
+  );
+}
+
+function GoogleConnectRow() {
+  const { user } = useAuth();
+  const [connected, setConnected] = useState(
+    () => (user ? googleProviderData(user) : false),
+  );
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState<string | null>(null);
+
+  async function connect() {
+    if (!user) return;
+    setBusy(true);
+    setMsg(null);
+    try {
+      await connectGoogle(user);
+      setConnected(true);
+    } catch (err) {
+      setMsg(err instanceof Error ? err.message : "Could not connect Google.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="px-4 py-3">
+      <div className="flex items-center gap-3">
+        <span className="w-9 h-9 rounded-xl bg-primary/8 text-primary flex items-center justify-center flex-shrink-0">
+          <i className="fa-brands fa-google text-sm" aria-hidden />
+        </span>
+        <span className="flex-1 min-w-0">
+          <span className="block text-sm font-semibold">Google</span>
+          <span className="block text-[11px] text-text-light truncate">
+            {msg ??
+              (connected
+                ? "Connected — you can sign in with Google"
+                : "Not connected")}
+          </span>
+        </span>
+        {connected ? (
+          <i className="fa-solid fa-circle-check text-green-500" aria-hidden />
+        ) : (
+          <button
+            onClick={() => void connect()}
+            disabled={busy}
+            className="text-[11px] font-bold text-primary border border-primary/40 rounded-full px-3 py-1.5 disabled:opacity-50 pressable"
+          >
+            {busy ? "…" : "Connect"}
+          </button>
+        )}
       </div>
     </div>
   );

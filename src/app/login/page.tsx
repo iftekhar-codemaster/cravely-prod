@@ -3,7 +3,7 @@
 import { Suspense, useState, type FormEvent } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { useAuth } from "@/components/AuthProvider";
+import { useAuth, GoogleLinkNeededError } from "@/components/AuthProvider";
 
 function GoogleIcon() {
   return (
@@ -59,6 +59,9 @@ function LoginForm() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [linkEmail, setLinkEmail] = useState<string | null>(null);
+  const [linkPw, setLinkPw] = useState("");
+  const [linkBusy, setLinkBusy] = useState(false);
 
   function friendly(code: string): string {
     if (code === "auth/invalid-credential" || code === "auth/wrong-password")
@@ -71,6 +74,22 @@ function LoginForm() {
     if (code === "auth/too-many-requests")
       return "Too many attempts. Please wait a moment and try again.";
     return "Something went wrong. Please try again.";
+  }
+
+  async function handleLink(e: FormEvent) {
+    e.preventDefault();
+    if (!linkEmail) return;
+    setError(null);
+    setLinkBusy(true);
+    try {
+      await signIn(linkEmail, linkPw); // also consumes + links the pending Google credential
+      router.push(next);
+      router.refresh();
+    } catch (err) {
+      setError(friendly((err as { code?: string }).code ?? ""));
+    } finally {
+      setLinkBusy(false);
+    }
   }
 
   async function handleSubmit(e: FormEvent) {
@@ -97,12 +116,70 @@ function LoginForm() {
       router.push(next);
       router.refresh();
     } catch (err) {
-      setError(
-        err instanceof Error ? err.message : friendly((err as { code?: string }).code ?? ""),
-      );
+      if (err instanceof GoogleLinkNeededError) {
+        setLinkEmail(err.email || email);
+        setError(null);
+      } else {
+        setError(
+          err instanceof Error
+            ? err.message
+            : friendly((err as { code?: string }).code ?? ""),
+        );
+      }
     } finally {
       setBusy(false);
     }
+  }
+
+  if (linkEmail) {
+    return (
+      <div className="px-5 pt-12 pb-10">
+        <div className="anim-fade-up">
+          <div className="w-12 h-12 rounded-2xl bg-primary/10 text-primary flex items-center justify-center text-xl mb-4">
+            <i className="fa-brands fa-google" aria-hidden />
+          </div>
+          <h1 className="text-xl font-extrabold leading-snug">Connect Google</h1>
+          <p className="text-sm text-text-light mt-2 leading-relaxed">
+            <b>{linkEmail}</b> already has a Cravely account with a password.
+            Confirm your password once — Google will be connected to the same
+            account so both sign-in methods work from now on.
+          </p>
+        </div>
+
+        <form onSubmit={handleLink} className="space-y-4 mt-6">
+          <input
+            type="password"
+            required
+            placeholder="Your account password"
+            value={linkPw}
+            onChange={(e) => setLinkPw(e.target.value)}
+            autoComplete="current-password"
+            className="w-full rounded-xl border border-line bg-card px-4 py-3 text-sm outline-none focus:border-primary transition-colors"
+          />
+          {error && (
+            <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-primary">{error}</p>
+          )}
+          <button
+            type="submit"
+            disabled={linkBusy}
+            className="w-full bg-primary py-3 font-semibold text-white rounded-full disabled:opacity-50 pressable"
+          >
+            {linkBusy ? "Linking…" : "Confirm & connect Google"}
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setLinkEmail(null);
+              setLinkPw("");
+              setError(null);
+            }}
+            className="w-full text-center text-xs text-text-light hover:text-primary transition-colors"
+          >
+            ← Back to sign in
+          </button>
+        </form>
+      </div>
+    );
   }
 
   return (
