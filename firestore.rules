@@ -86,6 +86,15 @@ service cloud.firestore {
         || isSuperAdmin();
     }
 
+    // Upload rate-limit counters — per-user docs + a global daily counter.
+    // Written via authenticated REST from the upload API; read by owner/admin.
+    match /uploadUsage/{uid} {
+      allow get: if signedIn() && (request.auth.uid == uid || isAdmin());
+      allow list: if isAdmin();
+      allow create, update: if signedIn();
+      allow delete: if isSuperAdmin();
+    }
+
     // Append-only audit trail — anyone signed in can log, admins read
     match /auditLogs/{id} {
       allow create: if signedIn();

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import {
   checkAndIncrementUser,
   checkGlobalLimit,
+  incrementGlobal,
 } from "@/lib/server/uploadUsage";
 
 // R2 upload endpoint. Activated by env vars (Cloudflare R2, S3-compatible).
@@ -57,20 +58,25 @@ export async function POST(req: NextRequest) {
   }
 
   // Rate limits — protect the R2 free tier (Class A = write ops)
-  if (!(await checkGlobalLimit())) {
-    return NextResponse.json(
-      { error: "Daily upload capacity reached. Try again tomorrow." },
-      { status: 429 },
-    );
-  }
-  const limit = await checkAndIncrementUser(user.uid);
-  if (!limit.ok) {
-    return NextResponse.json(
-      {
-        error: `Daily upload limit reached (${limit.limit}/day). Resets at midnight UTC.`,
-      },
-      { status: 429 },
-    );
+  try {
+    if (!(await checkGlobalLimit(idToken))) {
+      return NextResponse.json(
+        { error: "Daily upload capacity reached. Try again tomorrow." },
+        { status: 429 },
+      );
+    }
+    const limit = await checkAndIncrementUser(user.uid, idToken);
+    if (!limit.ok) {
+      return NextResponse.json(
+        {
+          error: `Daily upload limit reached (${limit.limit}/day). Resets at midnight UTC.`,
+        },
+        { status: 429 },
+      );
+    }
+  } catch (err) {
+    console.warn("[cravely] usage accounting failed:", err);
+    // don't block the upload if accounting hiccups
   }
 
   const form = await req.formData();
@@ -120,5 +126,6 @@ export async function POST(req: NextRequest) {
   );
 
   const url = `${process.env.R2_PUBLIC_BASE!.replace(/\/$/, "")}/${key}`;
+  void (await incrementGlobal(idToken).catch(() => undefined));
   return NextResponse.json({ url, key });
 }
