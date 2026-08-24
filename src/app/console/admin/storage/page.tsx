@@ -37,7 +37,7 @@ export default function AdminStoragePage() {
   }, []);
 
   const todayTotal = rows?.reduce((s, r) => s + r.count, 0) ?? 0;
-  const GLOBAL = Number(process.env.R2_DAILY_LIMIT_GLOBAL ?? 300);
+  const GLOBAL = Number(process.env.NEXT_PUBLIC_R2_DAILY_LIMIT_GLOBAL ?? 300);
   const pct = Math.min(100, Math.round((todayTotal / GLOBAL) * 100));
 
   return (

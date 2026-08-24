@@ -89,6 +89,10 @@ service cloud.firestore {
     // Upload rate-limit counters — per-user docs + a global daily counter.
     // Written via authenticated REST from the upload API; read by owner/admin.
     match /uploadUsage/{uid} {
+      // global daily counter — any signed-in user may read/bump it
+      match /_global {
+        allow get, create, update: if signedIn();
+      }
       allow get: if signedIn() && (request.auth.uid == uid || isAdmin());
       allow list: if isAdmin();
       allow create, update: if signedIn();
