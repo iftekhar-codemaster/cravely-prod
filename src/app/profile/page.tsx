@@ -75,6 +75,7 @@ export default function ProfilePage() {
       setVerifyState("sent");
     } catch (err) {
       const code = (err as { code?: string })?.code;
+      console.warn("[cravely] verification email failed:", code, err);
       if (code === "auth/too-many-requests") {
         setVerifyState("toomany");
       } else {
@@ -267,7 +268,7 @@ export default function ProfilePage() {
                     ) : verifyState === "toomany" ? (
                       "Too many emails sent. Wait a minute and try again."
                     ) : verifyState === "error" ? (
-                      "Could not send the email. Try again."
+                      "Couldn't send — check your connection and try again"
                     ) : (
                       "Send verification link"
                     )}

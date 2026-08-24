@@ -1,0 +1,73 @@
+<!--
+  Cravely — Email address verification template
+  Paste into: Firebase Console → Authentication → Templates →
+  "Email address verification" → Edit template → Message (HTML enabled by
+  the default sender). Keep the {{LINK}} placeholder — it's the magic link.
+-->
+<!DOCTYPE html>
+<html>
+  <body style="margin:0;padding:0;background-color:#f4f5f7;font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#f4f5f7;padding:32px 16px;">
+      <tr>
+        <td align="center">
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:480px;background-color:#ffffff;border-radius:20px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.06);">
+            <!-- Header -->
+            <tr>
+              <td style="background:linear-gradient(135deg,#ff4757,#ff9a76);padding:36px 32px;text-align:center;">
+                <div style="font-size:30px;font-weight:800;color:#ffffff;letter-spacing:-0.5px;">
+                  Crave<span style="opacity:0.85">ly</span>
+                </div>
+                <div style="color:rgba(255,255,255,0.85);font-size:13px;margin-top:6px;">
+                  Find what you crave
+                </div>
+              </td>
+            </tr>
+            <!-- Body -->
+            <tr>
+              <td style="padding:40px 36px 8px 36px;">
+                <h1 style="margin:0;font-size:22px;color:#2f3542;font-weight:800;">
+                  Confirm your email 🍽
+                </h1>
+                <p style="margin:14px 0 0 0;font-size:15px;line-height:1.6;color:#747d8c;">
+                  Hi{{#DISPLAY_NAME}} <b>{{DISPLAY_NAME}}</b>{{/DISPLAY_NAME}} — one quick
+                  tap and your Cravely account is fully activated. Save dishes,
+                  build packages and never lose a craving again.
+                </p>
+              </td>
+            </tr>
+            <!-- Button -->
+            <tr>
+              <td style="padding:28px 36px 8px 36px;" align="center">
+                <a href="{{LINK}}"
+                   style="display:block;background-color:#ff4757;color:#ffffff;text-decoration:none;font-size:16px;font-weight:700;padding:16px 24px;border-radius:999px;text-align:center;">
+                  Verify my email
+                </a>
+              </td>
+            </tr>
+            <!-- Fallback link -->
+            <tr>
+              <td style="padding:20px 36px 0 36px;">
+                <p style="margin:0;font-size:12px;line-height:1.6;color:#a4b0be;">
+                  Button not working? Copy this link into your browser:<br />
+                  <a href="{{LINK}}" style="color:#ff4757;word-break:break-all;">{{LINK}}</a>
+                </p>
+              </td>
+            </tr>
+            <!-- Footer -->
+            <tr>
+              <td style="padding:32px 36px 36px 36px;">
+                <div style="border-top:1px solid #f1f2f6;padding-top:20px;">
+                  <p style="margin:0;font-size:12px;color:#a4b0be;line-height:1.6;">
+                    Didn't create this account? You can safely ignore this email.
+                    <br /><br />
+                    Cravely · Thakurgaon · This link expires in 24 hours
+                  </p>
+                </div>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+  </body>
+</html>
