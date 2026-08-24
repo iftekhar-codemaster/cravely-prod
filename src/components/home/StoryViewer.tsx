@@ -12,11 +12,13 @@ export default function StoryViewer({
   stories,
   startIndex,
   logo,
+  onSeen,
   onClose,
 }: {
   stories: Story[];
   startIndex: number;
   logo?: string | undefined;
+  onSeen?: (storyId: string) => void;
   onClose: () => void;
 }) {  const [idx, setIdx] = useState(startIndex);
   const [progress, setProgress] = useState(0);
@@ -70,13 +72,16 @@ export default function StoryViewer({
     return () => window.removeEventListener("keydown", onKey);
   }, [onClose, next, prev]);
 
-  // preload next image for instant transitions
+  // preload next image + mark current as seen
   useEffect(() => {
+    const cur = stories[idx];
+    if (cur) onSeen?.(cur.id);
     const nxt = stories[idx + 1];
     if (nxt) {
       const img = new Image();
       img.src = nxt.image;
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [idx, stories]);
 
   const story = stories[idx];

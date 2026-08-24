@@ -1,23 +1,34 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { getStories, getAllRestaurants, type Story, type Restaurant } from "@/lib/data";
+import { getSeenStories, markStorySeen } from "@/lib/track";
 import SmartImg from "@/components/SmartImg";
 import StoryViewer from "./StoryViewer";
 
 export default function HomeStories() {
   const [stories, setStories] = useState<Story[] | null>(null);
   const [restaurants, setRestaurants] = useState<Restaurant[]>([]);
+  const [seen, setSeen] = useState<Record<string, number>>({});
   const [openAt, setOpenAt] = useState<number | null>(null);
+
+  const load = useCallback(async () => {
+    const [s, r] = await Promise.all([getStories(), getAllRestaurants()]);
+    setStories(s);
+    setRestaurants(r);
+  }, []);
 
   useEffect(() => {
     const t = setTimeout(() => {
-      void Promise.all([getStories(), getAllRestaurants()]).then(([s, r]) => {
-        setStories(s);
-        setRestaurants(r);
-      });
+      void load();
+      setSeen(getSeenStories());
     }, 0);
-    return () => clearTimeout(t);
+    window.addEventListener("cravely:stories", () => setSeen(getSeenStories()));
+    return () => {
+      clearTimeout(t);
+      window.removeEventListener("cravely:stories", () => setSeen(getSeenStories()));
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   if (stories === null) {
@@ -46,30 +57,42 @@ export default function HomeStories() {
 
   const live = restaurants.find((r) => r.id === clean[openAt!]?.restaurantId);
 
+  function handleSeen(id: string) {
+    markStorySeen(id);
+    setSeen(getSeenStories());
+  }
+
   return (
     <>
       <div className="px-4 flex gap-4 overflow-x-auto no-scrollbar pb-1">
-        {clean.map((story, i) => (
-          <button
-            key={story.id}
-            onClick={() => setOpenAt(i)}
-            className={`anim-pop flex flex-col items-center gap-2 min-w-[72px] pressable`}
-            style={{ animationDelay: `${Math.min(i * 55, 400)}ms` }}
-            aria-label={`${story.name} story`}
-          >
-            <span className="w-[68px] h-[68px] rounded-full p-[3px] bg-[linear-gradient(45deg,#f09433,#e6683c,#dc2743,#cc2366,#bc1888)] block">
-              <SmartImg
-                src={logoOf(story.restaurantId)}
-                alt={story.name}
-                className="w-full h-full rounded-full ring-[3px] ring-background bg-gray-100"
-                imgClassName="w-full h-full object-cover"
-              />
-            </span>
-            <span className="text-xs font-medium w-[75px] text-center truncate">
-              {story.name}
-            </span>
-          </button>
-        ))}
+        {clean.map((story, i) => {
+          const isSeen = Boolean(seen[story.id]);
+          return (
+            <button
+              key={story.id}
+              onClick={() => setOpenAt(i)}
+              className="anim-pop flex flex-col items-center gap-2 min-w-[72px] pressable"
+              style={{ animationDelay: `${Math.min(i * 55, 400)}ms` }}
+              aria-label={`${story.name} story${isSeen ? " (seen)" : ""}`}
+            >
+              <span
+                className={`w-[68px] h-[68px] rounded-full p-[3px] block ${
+                  isSeen ? "bg-gray-300" : "bg-[linear-gradient(45deg,#f09433,#e6683c,#dc2743,#cc2366,#bc1888)]"
+                }`}
+              >
+                <SmartImg
+                  src={logoOf(story.restaurantId)}
+                  alt={story.name}
+                  className="w-full h-full rounded-full ring-[3px] ring-background bg-gray-100"
+                  imgClassName="w-full h-full object-cover"
+                />
+              </span>
+              <span className={`text-xs font-medium w-[75px] text-center truncate ${isSeen ? "text-text-light" : ""}`}>
+                {story.name}
+              </span>
+            </button>
+          );
+        })}
       </div>
 
       {openAt !== null && (
@@ -77,6 +100,7 @@ export default function HomeStories() {
           stories={clean}
           startIndex={openAt}
           logo={live?.logo ?? ""}
+          onSeen={handleSeen}
           onClose={() => setOpenAt(null)}
         />
       )}

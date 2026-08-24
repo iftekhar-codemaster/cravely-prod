@@ -30,9 +30,9 @@ export default function BottomNav() {
     ? decodeURIComponent(pathname.slice("/product/".length))
     : null;
   const inStudio = pathname.startsWith("/console/restaurant");
-  const [studioTab, setStudioTab] = useState<"listing" | "add" | "settings">(
-    "listing",
-  );
+  const [studioTab, setStudioTab] = useState<
+    "listing" | "add" | "menu" | "settings"
+  >("listing");
 
   // studio tab comes from ?tab= (read from location to avoid useSearchParams
   // suspense requirements inside the layout)
@@ -40,7 +40,9 @@ export default function BottomNav() {
     if (!inStudio) return;
     const read = () => {
       const t = new URLSearchParams(window.location.search).get("tab");
-      setStudioTab(t === "add" || t === "settings" ? t : "listing");
+      setStudioTab(
+        t === "add" || t === "menu" || t === "settings" ? t : "listing",
+      );
     };
     read();
     window.addEventListener("popstate", read);
@@ -134,6 +136,12 @@ export default function BottomNav() {
 
   const studioSlots: Slot[] = [
     {
+      key: "home",
+      icon: "fa-solid fa-house",
+      label: "Home",
+      href: "/",
+    },
+    {
       key: "listing",
       icon: studioTab === "listing" ? "fa-solid fa-store" : "fa-regular fa-store",
       label: "Listing",
@@ -142,10 +150,17 @@ export default function BottomNav() {
     },
     {
       key: "add",
-      icon: studioTab === "add" ? "fa-solid fa-circle-plus" : "fa-regular fa-plus-square",
-      label: "Add Item",
+      icon: "fa-solid fa-circle-plus",
+      label: "Add",
       href: "/console/restaurant?tab=add",
       active: studioTab === "add",
+    },
+    {
+      key: "menu",
+      icon: studioTab === "menu" ? "fa-solid fa-book-open" : "fa-regular fa-book-open",
+      label: "Menu",
+      href: "/console/restaurant?tab=menu",
+      active: studioTab === "menu",
     },
     {
       key: "settings",
@@ -177,8 +192,8 @@ export default function BottomNav() {
           slot.key === "close"
             ? "w-[14%]"
             : inStudio
-              ? "w-1/3"
-              : "w-[17%]"
+              ? "w-[19%]"
+              : "w-[16%]"
         }`;
         // keyed by mode+key so swaps replay the pop animation with stagger
         const inner = (
