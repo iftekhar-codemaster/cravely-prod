@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, type ReactNode } from "react";
+import Image from "next/image";
 import { useAuth } from "@/components/AuthProvider";
 
 function Splash() {
@@ -10,7 +11,15 @@ function Splash() {
       role="status"
       aria-label="Cravely is loading"
     >
-      <div className="flex items-center gap-2 text-3xl font-extrabold">
+      <Image
+        src="/icon-192.png"
+        alt="Cravely logo"
+        width={72}
+        height={72}
+        className="rounded-2xl shadow-md anim-pop"
+        priority
+      />
+      <div className="mt-4 flex items-center gap-2 text-3xl font-extrabold">
         <span className="text-primary">Crave</span>
         <span>ly</span>
       </div>

@@ -1,16 +1,37 @@
+import type { Metadata } from "next";
 import SearchBar from "@/components/SearchBar";
 import ForYou from "@/components/home/ForYou";
 import HomeHeader from "@/components/home/HomeHeader";
 import HomeStories from "@/components/home/HomeStories";
 import { HomeOffers, HomeCuisines, HomeFoods } from "@/components/home/HomeSections";
 import Reveal from "@/components/home/Reveal";
+import {
+  getAllFoods,
+  getAllRestaurants,
+  getOffers,
+  getCuisines,
+  getStories,
+} from "@/lib/data";
+import { APP_URL } from "@/lib/site";
+
+export const metadata: Metadata = {
+  alternates: { canonical: APP_URL },
+};
 
 export default async function HomePage() {
+  const [foods, restaurants, offers, cuisines, stories] = await Promise.all([
+    getAllFoods(),
+    getAllRestaurants(),
+    getOffers(),
+    getCuisines(),
+    getStories(),
+  ]);
+
   return (
     <div>
       {/* Header — live counts + rotating crave line */}
       <section className="px-4 pt-6">
-        <HomeHeader />
+        <HomeHeader dishes={foods.length} kitchens={restaurants.length} />
       </section>
 
       {/* Search */}
@@ -21,21 +42,21 @@ export default async function HomePage() {
       {/* Stories — posted by restaurants */}
       <Reveal delay={120}>
         <section className="pt-4">
-          <HomeStories />
+          <HomeStories stories={stories} restaurants={restaurants} />
         </section>
       </Reveal>
 
       {/* Personalized picks */}
-      <ForYou />
+      <ForYou foods={foods} restaurants={restaurants} />
 
       {/* Auto-rotating offers gallery */}
-      <HomeOffers />
+      <HomeOffers offers={offers} />
 
       {/* Cuisines */}
-      <HomeCuisines />
+      <HomeCuisines cuisines={cuisines} />
 
       {/* All Foods */}
-      <HomeFoods />
+      <HomeFoods foods={foods} />
 
       {/* Footer */}
       <footer className="mt-8 py-8 text-center border-t border-line">

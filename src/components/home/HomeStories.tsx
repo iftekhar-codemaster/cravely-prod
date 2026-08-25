@@ -1,48 +1,30 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
-import { getStories, getAllRestaurants, type Story, type Restaurant } from "@/lib/data";
+import { useEffect, useState } from "react";
+import type { Story, Restaurant } from "@/lib/data";
 import { getSeenStories, markStorySeen } from "@/lib/track";
 import SmartImg from "@/components/SmartImg";
 import StoryViewer from "./StoryViewer";
 
-export default function HomeStories() {
-  const [stories, setStories] = useState<Story[] | null>(null);
-  const [restaurants, setRestaurants] = useState<Restaurant[]>([]);
+export default function HomeStories({
+  stories,
+  restaurants,
+}: {
+  stories: Story[];
+  restaurants: Restaurant[];
+}) {
   const [seen, setSeen] = useState<Record<string, number>>({});
   const [openAt, setOpenAt] = useState<number | null>(null);
 
-  const load = useCallback(async () => {
-    const [s, r] = await Promise.all([getStories(), getAllRestaurants()]);
-    setStories(s);
-    setRestaurants(r);
-  }, []);
-
   useEffect(() => {
-    const t = setTimeout(() => {
-      void load();
-      setSeen(getSeenStories());
-    }, 0);
-    window.addEventListener("cravely:stories", () => setSeen(getSeenStories()));
+    const t = setTimeout(() => setSeen(getSeenStories()), 0);
+    const onChange = () => setSeen(getSeenStories());
+    window.addEventListener("cravely:stories", onChange);
     return () => {
       clearTimeout(t);
-      window.removeEventListener("cravely:stories", () => setSeen(getSeenStories()));
+      window.removeEventListener("cravely:stories", onChange);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-
-  if (stories === null) {
-    return (
-      <div className="px-4 flex gap-4 overflow-hidden">
-        {[0, 1, 2, 3].map((i) => (
-          <div key={i} className="flex flex-col items-center gap-2 min-w-[72px]">
-            <div className="w-[68px] h-[68px] rounded-full skel" />
-            <div className="h-3 w-14 rounded skel" />
-          </div>
-        ))}
-      </div>
-    );
-  }
 
   // Drop legacy/malformed docs that predate the restaurant-linked model
   const clean = stories.filter(

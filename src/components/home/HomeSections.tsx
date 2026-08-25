@@ -1,28 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { getOffers, getCuisines, getAllFoods } from "@/lib/data";
 import OfferCarousel from "./OfferCarousel";
 import Reveal from "./Reveal";
 import FoodGrid from "@/components/FoodGrid";
-import type { Offer } from "@/lib/data";
+import type { Offer, Food } from "@/lib/data";
 import { useMemo } from "react";
 
-export function HomeOffers() {
-  const [offers, setOffers] = useState<Offer[] | null>(null);
-  useEffect(() => {
-    const t = setTimeout(() => void getOffers().then(setOffers), 0);
-    return () => clearTimeout(t);
-  }, []);
-  if (!offers) {
-    return (
-      <div className="px-4 pt-6">
-        <div className="h-6 w-48 rounded skel mb-4" />
-        <div className="h-[150px] rounded-xl skel" />
-        <div className="flex justify-center mt-3"><div className="w-24 h-1.5 rounded-full skel" /></div>
-      </div>
-    );
-  }
+export function HomeOffers({ offers }: { offers: Offer[] }) {
   return (
     <section className="px-4 pt-6">
       <Reveal>
@@ -38,29 +22,7 @@ export function HomeOffers() {
   );
 }
 
-export function HomeCuisines() {
-  const [cuisines, setCuisines] = useState<string[] | null>(null);
-  useEffect(() => {
-    const t = setTimeout(() => void getCuisines().then(setCuisines), 0);
-    return () => clearTimeout(t);
-  }, []);
-
-  if (!cuisines) {
-    return (
-      <div className="px-4 pt-8">
-        <div className="h-6 w-36 rounded skel mb-5" />
-        <div className="flex gap-6 overflow-hidden">
-          {[0, 1, 2, 3].map((i) => (
-            <div key={i} className="min-w-[84px] flex flex-col items-center gap-2">
-              <div className="w-[84px] h-[84px] rounded-[20px] skel" />
-              <div className="w-14 h-3 rounded skel" />
-            </div>
-          ))}
-        </div>
-      </div>
-    );
-  }
-
+export function HomeCuisines({ cuisines }: { cuisines: string[] }) {
   return (
     <section className="px-4 pt-8">
       <Reveal>
@@ -89,17 +51,10 @@ export function HomeCuisines() {
   );
 }
 
-export function HomeFoods() {
-  const [foods, setFoods] = useState<Awaited<ReturnType<typeof getAllFoods>> | null>(
-    null,
-  );
-  useEffect(() => {
-    const t = setTimeout(() => void getAllFoods().then(setFoods), 0);
-    return () => clearTimeout(t);
-  }, []);
+export function HomeFoods({ foods }: { foods: Food[] }) {
   const sorted = useMemo(
     () =>
-      (foods ?? []).slice().sort((a, b) => b.rating * Math.log10(1 + b.reviews) - a.rating * Math.log10(1 + a.reviews)),
+      foods.slice().sort((a, b) => b.rating * Math.log10(1 + b.reviews) - a.rating * Math.log10(1 + a.reviews)),
     [foods],
   );
 
@@ -116,23 +71,7 @@ export function HomeFoods() {
           Make your Plan
         </a>
       </div>
-
-      {!foods ? (
-        <div className="grid grid-cols-2 gap-3">
-          {[0, 1, 2, 3].map((i) => (
-            <div key={i} className="rounded-xl border border-line overflow-hidden bg-card">
-              <div className="h-32 skel" />
-              <div className="p-3 space-y-2">
-                <div className="h-4 w-3/4 rounded skel" />
-                <div className="h-3 w-1/3 rounded skel" />
-                <div className="h-4 w-1/4 rounded skel" />
-              </div>
-            </div>
-          ))}
-        </div>
-      ) : (
-        <FoodGrid foods={sorted} />
-      )}
+      <FoodGrid foods={sorted} />
     </section>
   );
 }

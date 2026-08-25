@@ -3,6 +3,7 @@
 import { Suspense, useState, type FormEvent } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
+import Image from "next/image";
 import { useAuth, GoogleLinkNeededError } from "@/components/AuthProvider";
 
 function GoogleIcon() {
@@ -185,6 +186,14 @@ function LoginForm() {
   return (
     <div className="px-5 pt-12 pb-10">
       <div className="mb-9 text-center">
+        <Image
+          src="/icon-192.png"
+          alt="Cravely logo"
+          width={72}
+          height={72}
+          priority
+          className="rounded-2xl shadow-md mx-auto mb-4 anim-pop"
+        />
         <h1 className="text-3xl font-extrabold">
           <span className="text-primary">Crave</span>ly
         </h1>

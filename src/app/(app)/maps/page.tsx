@@ -1,5 +1,14 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { getAllRestaurants } from "@/lib/data";
+import { APP_URL } from "@/lib/site";
+
+export const metadata: Metadata = {
+  title: "Map view",
+  description:
+    "Find every Cravely kitchen near you in Thakurgaon, sorted by distance.",
+  alternates: { canonical: `${APP_URL}/maps` },
+};
 
 export default async function MapsPage() {
   const restaurants = await getAllRestaurants();

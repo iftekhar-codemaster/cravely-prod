@@ -1,12 +1,10 @@
-"use client";
-
+import type { Metadata } from "next";
 import Link from "next/link";
-import { useParams } from "next/navigation";
+import { notFound } from "next/navigation";
 import CloseButton from "@/components/CloseButton";
 import ViewTracker from "@/components/ViewTracker";
 import SmartImg from "@/components/SmartImg";
 import LocationMap from "@/components/LocationMap";
-import { useAsyncData } from "@/lib/useAsyncData";
 import {
   getFood,
   getFoodsByIds,
@@ -14,63 +12,123 @@ import {
   getRelatedFoods,
   getReviews,
 } from "@/lib/data";
-import type { Food, Restaurant, Review } from "@/lib/data";
+import { APP_URL } from "@/lib/site";
 
-export default function ProductPage() {
-  const params = useParams<{ id: string }>();
-  const id = decodeURIComponent(params.id);
+type Props = { params: Promise<{ id: string }> };
 
-  const { data: food, loading } = useAsyncData<Food | undefined>(() => getFood(id), [id]);
-  const { data: restaurant } = useAsyncData<Restaurant | undefined>(
-    async () => (food ? getRestaurant(food.restaurantId) : undefined),
-    [food?.restaurantId],
-  );
-  const { data: related } = useAsyncData<Food[]>(async () => {
-    if (!food) return [];
-    const fallback = await getRelatedFoods(food);
-    const pairIds = food.pairsWith?.filter((pid) => pid !== food.id) ?? [];
-    if (!pairIds.length) return fallback.slice(0, 4);
-    const [paired, ...rest] = await Promise.all([
-      getFoodsByIds(pairIds),
-      fallback,
-    ]);
-    const extra = rest[0].filter(
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  const { id } = await params;
+  const food = await getFood(decodeURIComponent(id));
+  if (!food) return { title: "Dish not found" };
+  const restaurant = await getRestaurant(food.restaurantId);
+  const title = restaurant ? `${food.name} — ${restaurant.name}` : food.name;
+  const description =
+    food.description ||
+    `${food.name} for ৳${food.price} at ${restaurant?.name ?? "a kitchen near you"} — rated ${food.rating} on Cravely.`;
+  return {
+    title,
+    description,
+    alternates: { canonical: `${APP_URL}/product/${food.id}` },
+    openGraph: {
+      title,
+      description,
+      url: `${APP_URL}/product/${food.id}`,
+      images: [{ url: food.image }],
+      type: "article",
+    },
+  };
+}
+
+export default async function ProductPage({ params }: Props) {
+  const { id } = await params;
+  const foodId = decodeURIComponent(id);
+  const food = await getFood(foodId);
+  if (!food) notFound();
+
+  const restaurant = await getRestaurant(food.restaurantId);
+  const fallback = await getRelatedFoods(food);
+  const pairIds = food.pairsWith?.filter((pid) => pid !== food.id) ?? [];
+  let related = fallback.slice(0, 4);
+  if (pairIds.length) {
+    const [paired] = await Promise.all([getFoodsByIds(pairIds), fallback]);
+    const extra = fallback.filter(
       (f) => f.id !== food.id && !paired.some((p) => p.id === f.id),
     );
-    return [...paired, ...extra].slice(0, 4);
-  }, [food?.id]);
-  const reviews: Review[] = getReviews(id);
-
-  if (loading || !food) {
-    return (
-      <div>
-        <CloseButton />
-        <div className="w-full aspect-square skel" />
-        <div className="p-5 space-y-3">
-          <div className="h-7 w-2/3 rounded skel" />
-          <div className="h-4 w-1/3 rounded skel" />
-          <div className="h-24 rounded-xl skel mt-4" />
-        </div>
-      </div>
-    );
+    related = [...paired, ...extra].slice(0, 4);
   }
+  const reviews = getReviews(foodId);
 
-  if (!food) {
-    return (
-      <div className="px-6 pt-24 text-center">
-        <i className="fa-solid fa-magnifying-glass-minus text-4xl text-text-light" aria-hidden />
-        <h1 className="mt-4 font-bold">Dish not found</h1>
-        <Link href="/" className="mt-3 inline-block text-primary font-semibold text-sm">
-          Back to home
-        </Link>
-      </div>
-    );
-  }
+  const jsonLd = [
+    {
+      "@context": "https://schema.org",
+      "@type": "Product",
+      name: food.name,
+      image: [food.image, ...(food.images ?? [])],
+      description: food.description,
+      ...(restaurant
+        ? { brand: { "@type": "Brand", name: restaurant.name } }
+        : {}),
+      ...(food.rating > 0
+        ? {
+            aggregateRating: {
+              "@type": "AggregateRating",
+              ratingValue: food.rating,
+              reviewCount: food.reviews,
+            },
+          }
+        : {}),
+      offers: {
+        "@type": "Offer",
+        price: food.price,
+        priceCurrency: "BDT",
+        availability: "https://schema.org/InStock",
+        ...(restaurant?.lat && restaurant?.lng
+          ? {
+              areaServed: {
+                "@type": "Place",
+                geo: {
+                  "@type": "GeoCoordinates",
+                  latitude: restaurant.lat,
+                  longitude: restaurant.lng,
+                },
+              },
+            }
+          : {}),
+      },
+    },
+    {
+      "@context": "https://schema.org",
+      "@type": "BreadcrumbList",
+      itemListElement: [
+        { "@type": "ListItem", position: 1, name: "Home", item: APP_URL },
+        ...(restaurant
+          ? [
+              {
+                "@type": "ListItem",
+                position: 2,
+                name: restaurant.name,
+                item: `${APP_URL}/restaurants/${restaurant.id}`,
+              },
+            ]
+          : []),
+        {
+          "@type": "ListItem",
+          position: restaurant ? 3 : 2,
+          name: food.name,
+          item: `${APP_URL}/product/${food.id}`,
+        },
+      ],
+    },
+  ];
 
   return (
     <div className="relative">
       <ViewTracker foodId={food.id} />
       <CloseButton />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
 
       {/* Image */}
       <section className="anim-fade-up relative w-full aspect-square bg-gray-200 flex items-center justify-center">
@@ -187,7 +245,7 @@ export default function ProductPage() {
       <section className="p-5 pb-32">
         <h2 className="text-lg font-bold mb-4">Also ate together with</h2>
         <div className="space-y-4">
-          {(related ?? []).map((item, i) => (
+          {related.map((item, i) => (
             <Link
               key={item.id}
               href={`/product/${item.id}`}

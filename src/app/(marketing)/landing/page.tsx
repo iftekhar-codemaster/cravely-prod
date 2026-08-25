@@ -17,12 +17,13 @@ export const metadata: Metadata = {
       "Discover nearby restaurants, dishes, prices and ratings. Build a food package across kitchens and compare prices.",
     url: LANDING_URL,
     siteName: "Cravely",
-    images: [{ url: "/icon-512.png", width: 512, height: 512 }],
+    images: [{ url: "/og-banner.png", width: 1200, height: 630 }],
     locale: "en_US",
     type: "website",
   },
   twitter: {
-    card: "summary",
+    card: "summary_large_image",
+    images: ["/og-banner.png"],
     title: "Cravely — Find what you crave",
     description:
       "Discover nearby restaurants, dishes, prices and ratings. Build a food package across kitchens and compare prices.",

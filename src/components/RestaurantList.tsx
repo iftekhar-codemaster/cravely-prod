@@ -1,9 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { getAllRestaurants } from "@/lib/data";
 import type { Restaurant } from "@/lib/data";
-import { useAsyncData } from "@/lib/useAsyncData";
 import RestaurantCard from "@/components/RestaurantCard";
 
 const sortOptions = [
@@ -14,29 +12,15 @@ const sortOptions = [
 
 type SortKey = (typeof sortOptions)[number]["key"];
 
-function Skeleton() {
-  return (
-    <div className="space-y-3">
-      {[0, 1, 2].map((i) => (
-        <div
-          key={i}
-          className="h-24 rounded-xl bg-gray-100 animate-pulse"
-        />
-      ))}
-    </div>
-  );
-}
-
-export default function RestaurantList() {
+export default function RestaurantList({
+  restaurants,
+}: {
+  restaurants: Restaurant[];
+}) {
   const [sort, setSort] = useState<SortKey>("distance");
   const [maxKm, setMaxKm] = useState(10);
-  const { data: restaurants, loading } = useAsyncData<Restaurant[]>(
-    getAllRestaurants,
-    [],
-  );
 
   const list = useMemo(() => {
-    if (!restaurants) return [];
     return [...restaurants]
       .filter((r) => r.distanceKm <= maxKm)
       .sort((a, b) =>
@@ -47,18 +31,6 @@ export default function RestaurantList() {
             : b.reviews - a.reviews,
       );
   }, [restaurants, sort, maxKm]);
-
-  if (loading) {
-    return (
-      <div className="px-4 pt-6">
-        <h1 className="text-xl font-semibold mb-4">
-          <i className="fa-solid fa-store text-primary mr-2" aria-hidden />
-          Restaurants nearby
-        </h1>
-        <Skeleton />
-      </div>
-    );
-  }
 
   return (
     <div className="px-4 pt-6">

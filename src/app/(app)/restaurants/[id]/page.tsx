@@ -1,15 +1,13 @@
-"use client";
-
-import { useParams } from "next/navigation";
+import type { Metadata } from "next";
+import { notFound } from "next/navigation";
 import CloseButton from "@/components/CloseButton";
 import SmartImg from "@/components/SmartImg";
 import FoodCard from "@/components/FoodCard";
-import { useAsyncData } from "@/lib/useAsyncData";
 import {
   getRestaurant,
   getFoodsByRestaurant,
 } from "@/lib/data";
-import type { Food, Restaurant } from "@/lib/data";
+import { APP_URL } from "@/lib/site";
 
 /** Tolerant time parser: accepts "18:30" (24h) or "6:30 PM" style. Returns minutes since midnight, or undefined. */
 function parseTime(value?: string): number | undefined {
@@ -36,56 +34,102 @@ function isOpenNow(openFrom?: string, openUntil?: string): boolean | undefined {
   return cur >= from && cur < until;
 }
 
-export default function RestaurantDetailPage() {
-  const params = useParams<{ id: string }>();
-  const id = decodeURIComponent(params.id);
+type Props = { params: Promise<{ id: string }> };
 
-  const { data: restaurant, loading } = useAsyncData<Restaurant | undefined>(
-    () => getRestaurant(id),
-    [id],
-  );
-  const { data: menu } = useAsyncData<Food[]>(
-    () => getFoodsByRestaurant(id),
-    [id],
-  );
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  const { id } = await params;
+  const restaurant = await getRestaurant(decodeURIComponent(id));
+  if (!restaurant) return { title: "Restaurant not found" };
+  const description =
+    restaurant.description ??
+    `${restaurant.cuisine} in ${restaurant.address} — rated ${restaurant.rating} on Cravely. See the menu, prices and opening hours.`;
+  return {
+    title: `${restaurant.name} — ${restaurant.cuisine}`,
+    description,
+    alternates: { canonical: `${APP_URL}/restaurants/${restaurant.id}` },
+    openGraph: {
+      title: restaurant.name,
+      description,
+      url: `${APP_URL}/restaurants/${restaurant.id}`,
+      images: [{ url: restaurant.image }],
+      type: "profile",
+    },
+  };
+}
 
-  if (loading || !restaurant) {
-    return (
-      <div>
-        <CloseButton />
-        {/* Hero skeleton */}
-        <div className="h-48 skel" />
-        <div className="p-5 space-y-3">
-          <div className="h-7 w-2/3 rounded skel" />
-          <div className="h-4 w-1/2 rounded skel" />
-          <div className="flex gap-4 mt-2">
-            <div className="h-4 w-16 rounded skel" />
-            <div className="h-4 w-24 rounded skel" />
-            <div className="h-4 w-16 rounded skel" />
-          </div>
-        </div>
-        {/* Menu skeleton */}
-        <div className="px-5 pt-2">
-          <div className="h-5 w-24 rounded skel mb-4" />
-          <div className="grid grid-cols-2 gap-3">
-            {[0, 1, 2, 3].map((i) => (
-              <div key={i} className="rounded-xl border border-line overflow-hidden bg-card">
-                <div className="h-32 skel" />
-                <div className="p-3 space-y-2">
-                  <div className="h-4 w-3/4 rounded skel" />
-                  <div className="h-3 w-1/3 rounded skel" />
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-    );
-  }
+export default async function RestaurantDetailPage({ params }: Props) {
+  const { id } = await params;
+  const restaurantId = decodeURIComponent(id);
+  const restaurant = await getRestaurant(restaurantId);
+  if (!restaurant) notFound();
+  const menu = await getFoodsByRestaurant(restaurantId);
+
+  const jsonLd = {
+    "@context": "https://schema.org",
+    "@type": "Restaurant",
+    name: restaurant.name,
+    image: [restaurant.image, restaurant.cover].filter(Boolean),
+    logo: restaurant.logo,
+    description: restaurant.description,
+    servesCuisine: restaurant.cuisine,
+    telephone: restaurant.phone,
+    priceRange: "৳",
+    address: {
+      "@type": "PostalAddress",
+      streetAddress: restaurant.address,
+      addressLocality: "Thakurgaon",
+      addressCountry: "BD",
+    },
+    ...(restaurant.lat && restaurant.lng
+      ? {
+          geo: {
+            "@type": "GeoCoordinates",
+            latitude: restaurant.lat,
+            longitude: restaurant.lng,
+          },
+        }
+      : {}),
+    ...(restaurant.rating > 0
+      ? {
+          aggregateRating: {
+            "@type": "AggregateRating",
+            ratingValue: restaurant.rating,
+            reviewCount: restaurant.reviews,
+          },
+        }
+      : {}),
+    hasMenu: {
+      "@type": "Menu",
+      url: `${APP_URL}/restaurants/${restaurant.id}`,
+      hasMenuSection: menu.length
+        ? [
+            {
+              "@type": "MenuSection",
+              name: "Menu",
+              hasMenuItem: menu.map((f) => ({
+                "@type": "MenuItem",
+                name: f.name,
+                description: f.description,
+                image: f.image,
+                offers: {
+                  "@type": "Offer",
+                  price: f.price,
+                  priceCurrency: "BDT",
+                },
+              })),
+            },
+          ]
+        : undefined,
+    },
+  };
 
   return (
     <div className="relative pb-6">
       <CloseButton />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
 
       {/* Hero */}
       <div className="relative h-48 bg-gray-200 anim-fade-up">
@@ -186,22 +230,14 @@ export default function RestaurantDetailPage() {
       <section className="p-5">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-bold">Menu</h2>
-          {menu && <span className="text-xs text-text-light">{menu.length} items</span>}
+          <span className="text-xs text-text-light">{menu.length} items</span>
         </div>
-        {!menu ? (
-          <div className="grid grid-cols-2 gap-3">
-            {[0, 1].map((i) => (
-              <div key={i} className="h-48 rounded-xl skel" />
-            ))}
-          </div>
-        ) : (
-          <div className="grid grid-cols-2 gap-3 md:grid-cols-[repeat(auto-fill,minmax(260px,1fr))]">
-            {menu.map((food) => (
-              <FoodCard key={food.id} food={food} />
-            ))}
-          </div>
-        )}
-        {menu && menu.length === 0 && (
+        <div className="grid grid-cols-2 gap-3 md:grid-cols-[repeat(auto-fill,minmax(260px,1fr))]">
+          {menu.map((food) => (
+            <FoodCard key={food.id} food={food} />
+          ))}
+        </div>
+        {menu.length === 0 && (
           <p className="text-sm text-text-light py-6 text-center">
             Menu coming soon.
           </p>

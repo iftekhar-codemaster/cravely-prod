@@ -2,22 +2,24 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { getAllFoods, getAllRestaurants } from "@/lib/data";
+import type { Food, Restaurant } from "@/lib/data";
 import { recommendDishes } from "@/lib/recommend";
 import { collectSignals, isGeoOptedIn, setGeoOptedIn } from "@/lib/track";
 import { getLiked } from "@/lib/store";
 
-export default function ForYou() {
+export default function ForYou({
+  foods,
+  restaurants,
+}: {
+  foods: Food[];
+  restaurants: Restaurant[];
+}) {
   const [recs, setRecs] = useState<ReturnType<typeof recommendDishes> | null>(null);
   const [geo, setGeo] = useState(false);
   const [tick, setTick] = useState(0); // recompute when signals change
 
   useEffect(() => {
-    const t = setTimeout(async () => {
-      const [foods, restaurants] = await Promise.all([
-        getAllFoods(),
-        getAllRestaurants(),
-      ]);
+    const t = setTimeout(() => {
       setGeo(isGeoOptedIn());
       const signals = collectSignals(getLiked());
       setRecs(
@@ -31,7 +33,7 @@ export default function ForYou() {
       );
     }, 0);
     return () => clearTimeout(t);
-  }, [tick]);
+  }, [tick, foods, restaurants]);
 
   async function enableLocation() {
     setGeoOptedin_safe(true);
