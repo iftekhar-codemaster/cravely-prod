@@ -11,6 +11,7 @@ import { getDb } from "@/lib/firebase";
 import { useAuth } from "@/components/AuthProvider";
 import { uploadImage } from "@/lib/storage";
 import SmartImg from "@/components/SmartImg";
+import LocationSetter from "@/components/console/LocationSetter";
 import type { Restaurant } from "@/lib/data";
 
 const inputCls =
@@ -69,6 +70,7 @@ export default function SettingsTab({ restaurantId }: { restaurantId: string }) 
   return (
     <div className="space-y-4 pb-24">
       <IdentitySection rest={rest} restaurantId={restaurantId} onReload={load} />
+      <LocationSetter restaurantId={restaurantId} initialLat={rest.lat} initialLng={rest.lng} />
       <HoursSection rest={rest} restaurantId={restaurantId} />
       <ContactsSection rest={rest} restaurantId={restaurantId} />
       <SecuritySection />

@@ -103,12 +103,23 @@ function fromBase64Url(s: string): Uint8Array {
   return Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
 }
 
+/**
+ * WebAuthn relying-party ID. Passkeys are bound to the RP ID, so it must be
+ * stable across deploys and subdomains: the registrable domain
+ * `cravely.space` covers apex/www/app. Preview URLs and localhost fall back
+ * to the exact hostname (a suffix RP ID is only valid for that host).
+ */
+function rpId(): string {
+  const h = window.location.hostname;
+  return h === "cravely.space" || h.endsWith(".cravely.space") ? "cravely.space" : h;
+}
+
 /** Registers a passkey for the given user and stores its credential id in Firestore. */
 export async function enrollPasskey(uid: string, email: string): Promise<PasskeyRecord> {
   const cred = (await navigator.credentials.create({
     publicKey: {
       challenge: crypto.getRandomValues(new Uint8Array(32)),
-      rp: { name: "Cravely Console", id: window.location.hostname },
+      rp: { name: "Cravely Console", id: rpId() },
       user: {
         id: new TextEncoder().encode(uid),
         name: email,
@@ -153,6 +164,7 @@ export async function verifyPasskey(uid: string): Promise<boolean> {
     const assertion = (await navigator.credentials.get({
       publicKey: {
         challenge: crypto.getRandomValues(new Uint8Array(32)),
+        rpId: rpId(),
         allowCredentials: security.passkeys.map((p) => ({
           id: fromBase64Url(p.id) as unknown as BufferSource,
           type: "public-key",

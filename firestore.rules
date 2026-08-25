@@ -37,7 +37,16 @@ service cloud.firestore {
         || ownsRestaurant(request.resource.data.restaurantId);
       allow update: if isAdmin()
         || (ownsRestaurant(resource.data.restaurantId)
-            && request.resource.data.restaurantId == resource.data.restaurantId);
+            && request.resource.data.restaurantId == resource.data.restaurantId)
+        // review aggregate write-back: signed-in users may touch ONLY these
+        || (signedIn()
+            && request.resource.data.diff(resource.data).affectedKeys()
+                 .hasOnly(['rating', 'reviews'])
+            && request.resource.data.rating is number
+            && request.resource.data.rating >= 0
+            && request.resource.data.rating <= 5
+            && request.resource.data.reviews is int
+            && request.resource.data.reviews >= 0);
       allow delete: if isAdmin() || ownsRestaurant(resource.data.restaurantId);
     }
     match /stories/{id} {

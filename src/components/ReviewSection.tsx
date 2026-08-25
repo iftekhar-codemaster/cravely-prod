@@ -64,6 +64,7 @@ export default function ReviewSection({
   const [reviews, setReviews] = useState(initialReviews);
   const [rating, setRating] = useState(0);
   const [text, setText] = useState("");
+  const [anonymous, setAnonymous] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState(false);
@@ -83,17 +84,22 @@ export default function ReviewSection({
       const id = await submitReview({
         foodId,
         authorId: user.uid,
-        authorName: user.displayName || user.email?.split("@")[0] || "Foodie",
+        authorName: anonymous
+          ? "Anonymous"
+          : user.displayName || user.email?.split("@")[0] || "Foodie",
         rating,
         text,
       });
       if (!id) throw new Error("Reviews are not available right now.");
+      const shownName = anonymous
+        ? "Anonymous"
+        : user.displayName || user.email?.split("@")[0] || "Foodie";
       setReviews((prev) => [
         {
           id,
           foodId,
           authorId: user.uid,
-          author: user.displayName || user.email?.split("@")[0] || "Foodie",
+          author: shownName,
           rating,
           text: text.trim().slice(0, 1000),
           createdAt: { toDate: () => new Date() },
@@ -193,6 +199,15 @@ export default function ReviewSection({
             placeholder="How was it? (optional)"
             className="w-full rounded-xl border border-line bg-card px-4 py-3 text-sm outline-none focus:border-primary transition-colors resize-none"
           />
+          <label className="flex items-center gap-2 text-xs text-text-light select-none">
+            <input
+              type="checkbox"
+              checked={anonymous}
+              onChange={(e) => setAnonymous(e.target.checked)}
+              className="accent-primary w-3.5 h-3.5"
+            />
+            Post as Anonymous
+          </label>
           {error && <p className="text-xs text-red-500 mt-1">{error}</p>}
           <button
             type="submit"

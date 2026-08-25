@@ -10,6 +10,8 @@ import {
   collection,
   getDocs,
   addDoc,
+  updateDoc,
+  doc,
   query,
   where,
   serverTimestamp,
@@ -199,7 +201,7 @@ export async function getReviews(foodId: string): Promise<ReviewDoc[]> {
   }
 }
 
-/** Adds a review. Returns the created review id, or null when unavailable. */
+/** Adds a review, then recomputes the dish's rating/review-count aggregates. Returns the review id, or null when unavailable. */
 export async function submitReview(input: {
   foodId: string;
   restaurantId?: string;
@@ -219,6 +221,26 @@ export async function submitReview(input: {
     text: input.text.trim().slice(0, 1000),
     createdAt: serverTimestamp(),
   });
+
+  // Recompute aggregates on the food doc so lists/cards show live ratings.
+  try {
+    const snap = await getDocs(
+      query(collection(db, "reviews"), where("foodId", "==", input.foodId)),
+    );
+    const count = snap.size;
+    const avg =
+      count > 0
+        ? snap.docs.reduce((s, d) => s + ((d.data() as { rating?: number }).rating ?? 0), 0) /
+          count
+        : 0;
+    await updateDoc(doc(db, "foods", input.foodId), {
+      rating: Number(avg.toFixed(1)),
+      reviews: count,
+    });
+  } catch (err) {
+    console.warn("[cravely] review aggregate update failed:", err);
+  }
+
   return ref.id;
 }
 

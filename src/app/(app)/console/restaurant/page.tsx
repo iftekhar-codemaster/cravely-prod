@@ -259,15 +259,13 @@ function RestaurantStudio() {
                 <MenuList menu={menu} onDelete={(id) => void deleteDish(id).catch(() => alert("Delete failed"))} />
               </section>
 
-              {restCoords && (
-                <div className="mt-6">
-                  <LocationSetter
-                    restaurantId={effRestaurantId}
-                    initialLat={restCoords.lat}
-                    initialLng={restCoords.lng}
-                  />
-                </div>
-              )}
+              <div className="mt-6">
+                <LocationSetter
+                  restaurantId={effRestaurantId}
+                  initialLat={restCoords?.lat}
+                  initialLng={restCoords?.lng}
+                />
+              </div>
 
               <div className="mt-6 pb-24">
                 <StoryManager
