@@ -14,6 +14,8 @@ import {
 } from "@/lib/data";
 import { APP_URL } from "@/lib/site";
 
+export const revalidate = 60;
+
 export const metadata: Metadata = {
   alternates: { canonical: APP_URL },
 };

@@ -3,6 +3,8 @@ import RestaurantList from "@/components/RestaurantList";
 import { getAllRestaurants } from "@/lib/data";
 import { APP_URL } from "@/lib/site";
 
+export const revalidate = 60;
+
 export const metadata: Metadata = {
   title: "Restaurants",
   description:

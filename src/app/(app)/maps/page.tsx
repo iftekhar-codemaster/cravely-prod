@@ -3,6 +3,8 @@ import Link from "next/link";
 import { getAllRestaurants } from "@/lib/data";
 import { APP_URL } from "@/lib/site";
 
+export const revalidate = 60;
+
 export const metadata: Metadata = {
   title: "Map view",
   description:
