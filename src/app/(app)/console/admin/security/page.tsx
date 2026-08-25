@@ -9,6 +9,7 @@ import {
 import { useAuth } from "@/components/AuthProvider";
 import { getFirebaseAuth } from "@/lib/firebase";
 import { audit } from "@/lib/audit";
+import SocialLinksCard from "@/components/console/SocialLinksCard";
 import {
   addAllowedIp,
   getAdminSecurity,
@@ -405,6 +406,8 @@ export default function AdminSecurityPage() {
           </label>
         </section>
       )}
+
+      <SocialLinksCard canEdit={profile?.role === "super_admin"} />
     </div>
   );
 }
