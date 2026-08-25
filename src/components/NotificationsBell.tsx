@@ -1,8 +1,13 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { useNotifications, notificationCreatedAtMs } from "@/lib/notifications";
+import {
+  useNotifications,
+  notificationCreatedAtMs,
+  type NotificationDoc,
+} from "@/lib/notifications";
 
 function timeAgo(ms: number) {
   if (!ms) return "";
@@ -15,9 +20,16 @@ function timeAgo(ms: number) {
 }
 
 export default function NotificationsBell() {
-  const { notifications, unreadCount, readAtMs, markAllRead, loading } =
+  const { notifications, unreadCount, readAtMs, markAllRead, markRead, loading } =
     useNotifications();
   const [open, setOpen] = useState(false);
+  const router = useRouter();
+
+  function openNotification(n: NotificationDoc) {
+    void markRead(n);
+    setOpen(false);
+    if (n.restaurantId) router.push(`/restaurants/${n.restaurantId}`);
+  }
 
   return (
     <div className="relative ml-auto">
@@ -71,15 +83,18 @@ export default function NotificationsBell() {
                 notifications.map((n) => {
                   const unread = notificationCreatedAtMs(n) > readAtMs;
                   return (
-                    <div
+                    <button
                       key={n.id}
-                      className={`px-4 py-3 border-b border-line last:border-0 ${unread ? "bg-primary/5" : ""}`}
+                      onClick={() => openNotification(n)}
+                      className={`w-full text-left px-4 py-3 border-b border-line last:border-0 ${
+                        unread ? "bg-primary/5" : ""
+                      } hover:bg-gray-50 transition-colors`}
                     >
                       <div className="flex items-start gap-2">
                         <span className="w-7 h-7 rounded-lg bg-primary/10 text-primary flex items-center justify-center text-[11px] flex-shrink-0 mt-0.5">
                           <i className="fa-solid fa-bullhorn" aria-hidden />
                         </span>
-                        <div className="min-w-0">
+                        <div className="min-w-0 flex-1">
                           <p className="text-[13px] font-semibold leading-snug">
                             {n.title}
                           </p>
@@ -90,10 +105,15 @@ export default function NotificationsBell() {
                           )}
                           <p className="text-[10px] text-text-light mt-1">
                             {timeAgo(notificationCreatedAtMs(n))}
+                            {unread && (
+                              <span className="ml-1.5 text-primary font-semibold">
+                                • new
+                              </span>
+                            )}
                           </p>
                         </div>
                       </div>
-                    </div>
+                    </button>
                   );
                 })
               )}

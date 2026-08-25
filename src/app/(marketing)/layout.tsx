@@ -2,6 +2,7 @@ import Link from "next/link";
 import Image from "next/image";
 import type { Metadata } from "next";
 import AuthedRedirect from "@/components/marketing/AuthedRedirect";
+import InstallNowButton from "@/components/marketing/InstallNowButton";
 import { LANDING_URL } from "@/lib/site";
 
 export const metadata: Metadata = {
@@ -45,12 +46,7 @@ export default function MarketingLayout({
             >
               Terms
             </Link>
-            <a
-              href={process.env.NEXT_PUBLIC_APP_URL ?? "https://app.cravely.space"}
-              className="pressable bg-primary text-white font-bold text-sm rounded-full px-4 py-2 shadow-md"
-            >
-              Open app
-            </a>
+            <InstallNowButton />
           </nav>
         </div>
       </header>

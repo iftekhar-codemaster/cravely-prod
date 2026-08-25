@@ -109,6 +109,9 @@ export function filterNotificationsForUser(
 export function useNotifications() {
   const { user, profile } = useAuth();
   const [rows, setRows] = useState<NotificationDoc[] | null>(null);
+  // local read marker — updates instantly on mark-read so the UI reflects it
+  // without waiting for the profile to reload
+  const [localReadAtMs, setLocalReadAtMs] = useState<number | null>(null);
 
   useEffect(() => {
     const t = setTimeout(
@@ -132,27 +135,50 @@ export function useNotifications() {
     [rows, notifProfile],
   );
 
-  const readAtMs = toMillis(notifProfile?.notificationsReadAt);
+  const readAtMs = Math.max(
+    toMillis(notifProfile?.notificationsReadAt),
+    localReadAtMs ?? 0,
+  );
   const unreadCount = user
     ? notifications.filter((n) => toMillis(n.createdAt) > readAtMs).length
     : 0;
 
+  const persistReadMarker = useCallback(
+    async (ms: number) => {
+      const db = getDb();
+      if (!db || !user) return;
+      await setDoc(
+        doc(db, "users", user.uid),
+        { notificationsReadAt: new Date(ms) },
+        { merge: true },
+      );
+    },
+    [user],
+  );
+
   const markAllRead = useCallback(async () => {
     if (!user) return;
-    const db = getDb();
-    if (!db) return;
-    await setDoc(
-      doc(db, "users", user.uid),
-      { notificationsReadAt: serverTimestamp() },
-      { merge: true },
-    );
-  }, [user]);
+    setLocalReadAtMs(Date.now());
+    await persistReadMarker(Date.now());
+  }, [user, persistReadMarker]);
+
+  /** Marks read up to (and including) the given notification. */
+  const markRead = useCallback(
+    async (n: NotificationDoc) => {
+      const ms = toMillis(n.createdAt);
+      if (ms <= readAtMs) return;
+      setLocalReadAtMs(ms);
+      await persistReadMarker(ms);
+    },
+    [readAtMs, persistReadMarker],
+  );
 
   return {
     notifications,
     unreadCount,
     readAtMs,
     markAllRead,
+    markRead,
     loading: rows === null,
   };
 }

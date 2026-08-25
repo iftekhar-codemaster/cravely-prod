@@ -2,6 +2,8 @@ import { AuthProvider } from "@/components/AuthProvider";
 import AppGate from "@/components/AppGate";
 import BottomNav from "@/components/BottomNav";
 import ImpersonationBanner from "@/components/ImpersonationBanner";
+import PermissionPrompts from "@/components/PermissionPrompts";
+import InstallPrompt from "@/components/InstallPrompt";
 
 export default function AppLayout({ children }: LayoutProps<"/">) {
   return (
@@ -12,6 +14,8 @@ export default function AppLayout({ children }: LayoutProps<"/">) {
           {children}
         </main>
         <BottomNav />
+        <PermissionPrompts />
+        <InstallPrompt />
       </AppGate>
     </AuthProvider>
   );
