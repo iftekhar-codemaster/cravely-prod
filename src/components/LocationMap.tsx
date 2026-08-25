@@ -2,6 +2,8 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { useUserLocation } from "@/lib/useUserLocation";
+import { haversineKm } from "@/lib/geo";
 
 /**
  * Shows the restaurant's SAVED location (set by the owner in Restaurant
@@ -22,6 +24,7 @@ export default function LocationMap({
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [ready, setReady] = useState(false);
+  const userLoc = useUserLocation();
 
   const hasCoords =
     typeof lat === "number" &&
@@ -87,15 +90,30 @@ export default function LocationMap({
         <div ref={containerRef} className="absolute inset-0 z-0" />
         {!ready && <div className="absolute inset-0 skel" />}
       </div>
-      <div className="flex gap-4 mt-2">
+      <div className="flex gap-4 mt-2 flex-wrap items-center">
+        {userLoc && (
+          <span className="text-xs text-text-light">
+            <i className="fa-solid fa-location-dot mr-1" aria-hidden />
+            {haversineKm(userLoc.lat, userLoc.lng, lat!, lng!).toFixed(1)} km away
+          </span>
+        )}
         <a
-          href={`https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}&travelmode=driving`}
+          href={`https://www.google.com/maps/dir/?api=1${userLoc ? `&origin=${userLoc.lat},${userLoc.lng}` : ""}&destination=${lat},${lng}&travelmode=driving`}
           target="_blank"
           rel="noopener noreferrer"
           className="inline-flex items-center gap-1.5 text-xs font-semibold text-primary"
         >
           <i className="fa-solid fa-diamond-turn-right" aria-hidden />
           Get directions
+        </a>
+        <a
+          href={`https://www.google.com/maps/search/?api=1&query=${lat},${lng}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center gap-1.5 text-xs font-semibold text-text-light hover:text-primary transition-colors"
+        >
+          <i className="fa-brands fa-google" aria-hidden />
+          Open in Google Maps
         </a>
         <Link
           href="/maps"

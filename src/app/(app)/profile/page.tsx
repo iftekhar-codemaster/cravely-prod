@@ -9,6 +9,10 @@ import { useAuth } from "@/components/AuthProvider";
 import { connectGoogle, googleProviderData } from "@/components/AuthProvider";
 import { isAdminRole, ROLE_LABELS } from "@/lib/user";
 import { getLiked, getPackage } from "@/lib/store";
+import {
+  notificationCreatedAtMs,
+  useNotifications,
+} from "@/lib/notifications";
 
 const ROLE_STYLES = {
   user: "bg-blue-50 text-blue-600",
@@ -232,8 +236,7 @@ export default function ProfilePage() {
 
         <Group title="Account">
           <GoogleConnectRow />
-          <Row href="#" icon="fa-bell" title="Notifications" desc="Coming soon" muted disabled />
-          <Row href="#" icon="fa-circle-question" title="Help & support" desc="Coming soon" muted disabled />
+          <NotificationsSection />
           {!user.emailVerified && (
             <div className="px-4 py-3">
               <div className="flex items-center gap-3">
@@ -286,6 +289,92 @@ export default function ProfilePage() {
           Cravely · Thakurgaon {memberSince ? `· with you since ${memberSince}` : ""}
         </p>
       </div>
+    </div>
+  );
+}
+
+function timeAgo(ms: number): string {
+  const s = Math.floor((Date.now() - ms) / 1000);
+  if (s < 60) return "just now";
+  const m = Math.floor(s / 60);
+  if (m < 60) return `${m}m ago`;
+  const h = Math.floor(m / 60);
+  if (h < 24) return `${h}h ago`;
+  return `${Math.floor(h / 24)}d ago`;
+}
+
+function NotificationsSection() {
+  const { notifications, unreadCount, markAllRead, loading } =
+    useNotifications();
+  const [open, setOpen] = useState(false);
+
+  return (
+    <div>
+      <button
+        onClick={() => setOpen((v) => !v)}
+        aria-expanded={open}
+        className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-background transition-colors"
+      >
+        <span className="w-9 h-9 rounded-xl bg-primary/8 text-primary flex items-center justify-center flex-shrink-0">
+          <i className="fa-solid fa-bell text-sm" aria-hidden />
+        </span>
+        <span className="flex-1 min-w-0">
+          <span className="block text-sm font-semibold">
+            Notifications
+            {unreadCount > 0 && (
+              <span className="ml-2 bg-primary text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full align-middle">
+                {unreadCount}
+              </span>
+            )}
+          </span>
+          <span className="block text-[11px] text-text-light truncate">
+            {loading
+              ? "Loading…"
+              : unreadCount > 0
+                ? `${unreadCount} new notification${unreadCount === 1 ? "" : "s"}`
+                : "You're all caught up"}
+          </span>
+        </span>
+        <i
+          className={`fa-solid fa-chevron-down text-[10px] text-text-light transition-transform ${open ? "rotate-180" : ""}`}
+          aria-hidden
+        />
+      </button>
+      {open && (
+        <div className="px-4 pb-4 pt-1 anim-fade-up space-y-3">
+          {!loading && notifications.length === 0 ? (
+            <p className="text-[11px] text-text-light py-2">No notifications yet.</p>
+          ) : (
+            <>
+              {unreadCount > 0 && (
+                <button
+                  onClick={() => void markAllRead()}
+                  className="text-[11px] font-bold text-primary border border-primary/40 rounded-full px-3 py-1.5 pressable"
+                >
+                  Mark all read
+                </button>
+              )}
+              <ul className="space-y-3">
+                {notifications.map((n) => {
+                  const ms = notificationCreatedAtMs(n);
+                  return (
+                    <li key={n.id} className="flex items-start gap-2.5">
+                      <i className="fa-solid fa-bullhorn text-[10px] mt-1 text-primary" aria-hidden />
+                      <span className="flex-1 min-w-0">
+                        <span className="block text-sm font-semibold leading-snug">{n.title}</span>
+                        <span className="block text-xs text-text-light leading-relaxed">{n.body}</span>
+                        <span className="block text-[10px] text-text-light mt-0.5">
+                          {ms ? timeAgo(ms) : "just now"}
+                        </span>
+                      </span>
+                    </li>
+                  );
+                })}
+              </ul>
+            </>
+          )}
+        </div>
+      )}
     </div>
   );
 }

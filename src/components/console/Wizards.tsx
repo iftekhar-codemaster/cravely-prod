@@ -5,7 +5,7 @@ import Link from "next/link";
 import { addDoc, collection, serverTimestamp } from "firebase/firestore";
 import { useAuth } from "@/components/AuthProvider";
 import { getDb } from "@/lib/firebase";
-import { getCuisines } from "@/lib/data";
+import { getCuisines, getFoodsByRestaurant, type Food } from "@/lib/data";
 import { audit } from "@/lib/audit";
 import { uploadImage } from "@/lib/storage";
 
@@ -165,6 +165,8 @@ export function AddDishWizard({
   const { user } = useAuth();
   const [step, setStep] = useState(0);
   const [cuisines, setCuisines] = useState<string[]>([]);
+  const [others, setOthers] = useState<Food[]>([]);
+  const [pairsWith, setPairsWith] = useState<string[]>([]);
   const [images, setImages] = useState<string[]>([]);
   const [manualUrl, setManualUrl] = useState("");
   const [uploading, setUploading] = useState(false);
@@ -182,6 +184,26 @@ export function AddDishWizard({
     const t = setTimeout(() => void getCuisines().then(setCuisines), 0);
     return () => clearTimeout(t);
   }, []);
+
+  // Other dishes from the same kitchen — pairing candidates
+  useEffect(() => {
+    if (!restaurantId) return;
+    const t = setTimeout(
+      () => void getFoodsByRestaurant(restaurantId).then(setOthers),
+      0,
+    );
+    return () => clearTimeout(t);
+  }, [restaurantId]);
+
+  function togglePair(id: string) {
+    setPairsWith((prev) =>
+      prev.includes(id)
+        ? prev.filter((p) => p !== id)
+        : prev.length >= 4
+          ? prev
+          : [...prev, id],
+    );
+  }
 
   async function addFiles(files: FileList | null) {
     if (!files?.length) return;
@@ -219,6 +241,12 @@ export function AddDishWizard({
     images[0] ||
     `https://loremflickr.com/400/300/${encodeURIComponent(form.category || "food")}`;
 
+  function defaultDescription(): string {
+    const name = form.name.trim();
+    const category = (form.category.trim() || "dish").toLowerCase();
+    return `${name} — freshly prepared ${category} at its best.`;
+  }
+
   async function submit() {
     if (!user || !form.name.trim() || !priceNum) return;
     setBusy(true);
@@ -234,8 +262,8 @@ export function AddDishWizard({
         reviews: 0,
         image: images[0] ?? previewImage,
         images,
-        pairsWith: [],
-        description: form.description.trim() || "Delicious — details coming soon.",
+        pairsWith,
+        description: form.description.trim() || defaultDescription(),
         createdBy: user.uid,
         createdAt: serverTimestamp(),
       });
@@ -316,6 +344,39 @@ export function AddDishWizard({
             onChange={(e) => setForm({ ...form, description: e.target.value })}
             className={`${inputCls} resize-none`}
           />
+
+          {others.length > 0 && (
+            <div>
+              <p className="text-xs font-semibold mb-1">Goes well with ({pairsWith.length}/4)</p>
+              <p className="text-[11px] text-text-light mb-2">
+                Pick up to 4 of your other dishes to suggest together.
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {others.map((f) => {
+                  const selected = pairsWith.includes(f.id);
+                  const disabled = !selected && pairsWith.length >= 4;
+                  return (
+                    <button
+                      key={f.id}
+                      type="button"
+                      onClick={() => togglePair(f.id)}
+                      disabled={disabled}
+                      className={`text-xs px-3 py-1.5 rounded-full border transition-colors ${
+                        selected
+                          ? "bg-primary text-white border-primary"
+                          : disabled
+                            ? "border-line bg-gray-50 text-text-light opacity-50"
+                            : "border-line bg-card text-text-light hover:border-primary"
+                      }`}
+                    >
+                      {selected && <i className="fa-solid fa-check mr-1" aria-hidden />}
+                      {f.name}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
 
           <div>
             <p className="text-xs font-semibold mb-2">Photos ({images.length}/3)</p>

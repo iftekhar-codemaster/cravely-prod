@@ -144,13 +144,21 @@ function MapModal({
       });
 
       if (initialLat != null && initialLng != null) {
-        markerRef.current = L.marker([initialLat, initialLng], { icon }).addTo(map);
+        markerRef.current = L.marker([initialLat, initialLng], { icon, draggable: true }).addTo(map);
+        markerRef.current.on("dragend", () => {
+          const p = markerRef.current!.getLatLng();
+          setPin({ lat: p.lat, lng: p.lng });
+        });
         setPin({ lat: initialLat, lng: initialLng });
       }
 
       map.on("click", (e: LeafletMouseEvent) => {
         markerRef.current?.remove();
-        markerRef.current = L.marker([e.latlng.lat, e.latlng.lng], { icon }).addTo(map);
+        markerRef.current = L.marker([e.latlng.lat, e.latlng.lng], { icon, draggable: true }).addTo(map);
+        markerRef.current.on("dragend", () => {
+          const p = markerRef.current!.getLatLng();
+          setPin({ lat: p.lat, lng: p.lng });
+        });
         setPin({ lat: e.latlng.lat, lng: e.latlng.lng });
       });
 

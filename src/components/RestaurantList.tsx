@@ -2,6 +2,8 @@
 
 import { useMemo, useState } from "react";
 import type { Restaurant } from "@/lib/data";
+import { haversineKm } from "@/lib/geo";
+import { useUserLocation } from "@/lib/useUserLocation";
 import RestaurantCard from "@/components/RestaurantCard";
 
 const sortOptions = [
@@ -12,6 +14,16 @@ const sortOptions = [
 
 type SortKey = (typeof sortOptions)[number]["key"];
 
+function distanceOf(
+  r: Restaurant,
+  userLoc: { lat: number; lng: number } | null,
+): number {
+  if (userLoc && r.lat != null && r.lng != null) {
+    return haversineKm(userLoc.lat, userLoc.lng, r.lat, r.lng);
+  }
+  return r.distanceKm;
+}
+
 export default function RestaurantList({
   restaurants,
 }: {
@@ -19,18 +31,20 @@ export default function RestaurantList({
 }) {
   const [sort, setSort] = useState<SortKey>("distance");
   const [maxKm, setMaxKm] = useState(10);
+  const userLoc = useUserLocation();
 
   const list = useMemo(() => {
-    return [...restaurants]
-      .filter((r) => r.distanceKm <= maxKm)
+    return restaurants
+      .map((r) => ({ r, km: distanceOf(r, userLoc) }))
+      .filter(({ km }) => km <= maxKm)
       .sort((a, b) =>
         sort === "distance"
-          ? a.distanceKm - b.distanceKm
+          ? a.km - b.km
           : sort === "rating"
-            ? b.rating - a.rating
-            : b.reviews - a.reviews,
+            ? b.r.rating - a.r.rating
+            : b.r.reviews - a.r.reviews,
       );
-  }, [restaurants, sort, maxKm]);
+  }, [restaurants, sort, maxKm, userLoc]);
 
   return (
     <div className="px-4 pt-6">
@@ -69,8 +83,8 @@ export default function RestaurantList({
       </label>
 
       <div className="space-y-3 pb-4">
-        {list.map((r) => (
-          <RestaurantCard key={r.id} restaurant={r} />
+        {list.map(({ r, km }) => (
+          <RestaurantCard key={r.id} restaurant={r} distanceKm={userLoc ? km : undefined} />
         ))}
         {list.length === 0 && (
           <p className="text-sm text-text-light text-center py-8">

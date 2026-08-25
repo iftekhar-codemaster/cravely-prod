@@ -15,6 +15,7 @@ import {
   serverTimestamp,
 } from "firebase/firestore";
 import { getDb, isFirebaseConfigured } from "./firebase";
+import { haversineKm } from "./geo";
 import {
   restaurants as mockRestaurants,
   foods as mockFoods,
@@ -229,6 +230,7 @@ export async function submitReview(input: {
 export async function buildPackages(
   dishIds: string[],
   radiusKm: number,
+  origin?: { lat: number; lng: number },
 ): Promise<PackageResult[]> {
   if (dishIds.length === 0) return [];
   const [allRestaurants, allFoods] = await Promise.all([
@@ -238,7 +240,11 @@ export async function buildPackages(
   const results: PackageResult[] = [];
 
   for (const restaurant of allRestaurants) {
-    if (restaurant.distanceKm > radiusKm) continue;
+    const km =
+      origin && restaurant.lat != null && restaurant.lng != null
+        ? haversineKm(origin.lat, origin.lng, restaurant.lat, restaurant.lng)
+        : restaurant.distanceKm;
+    if (km > radiusKm) continue;
 
     // Match by dish NAME so multiple restaurants can fulfill the same bundle.
     const wantedNames = dishIds

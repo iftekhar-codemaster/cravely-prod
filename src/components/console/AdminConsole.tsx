@@ -323,6 +323,11 @@ export default function ConsoleShell({ children }: { children: ReactNode }) {
             },
             { href: "/console/admin/audit", label: "Audit", icon: "fa-clipboard-list" },
             {
+              href: "/console/admin/notifications",
+              label: "Notifications",
+              icon: "fa-bullhorn",
+            },
+            {
               href: "/console/admin/database",
               label: "Database",
               icon: "fa-database",

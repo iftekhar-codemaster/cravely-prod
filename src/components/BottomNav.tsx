@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { getLiked, getPackage, addToPackage, toggleLiked } from "@/lib/store";
+import { getFood, getRestaurant } from "@/lib/data";
 
 const RETURN_KEY = "cravely:returnTo";
 
@@ -51,7 +52,13 @@ export default function BottomNav() {
 
   const [liked, setLiked] = useState(false);
   const [inPack, setInPack] = useState(false);
-  const [preorderHint, setPreorderHint] = useState(false);
+  const [orderOpen, setOrderOpen] = useState(false);
+  const [orderTarget, setOrderTarget] = useState<{
+    name: string;
+    phone?: string;
+    whatsapp?: string;
+    foodName: string;
+  } | null>(null);
 
   // remember where the user came from
   useEffect(() => {
@@ -73,6 +80,27 @@ export default function BottomNav() {
     };
   }, [productId]);
 
+  // resolve the dish's restaurant contact info for the order sheet
+  useEffect(() => {
+    if (!productId) return;
+    let alive = true;
+    void (async () => {
+      const food = await getFood(productId);
+      if (!food || !alive) return;
+      const restaurant = await getRestaurant(food.restaurantId);
+      if (!restaurant || !alive) return;
+      setOrderTarget({
+        name: restaurant.name,
+        phone: restaurant.phone,
+        whatsapp: restaurant.whatsapp,
+        foodName: food.name,
+      });
+    })();
+    return () => {
+      alive = false;
+    };
+  }, [productId]);
+
   const toggleLike = useCallback(() => {
     if (!productId) return;
     setLiked(toggleLiked(productId));
@@ -89,11 +117,6 @@ export default function BottomNav() {
     else router.back();
   }
 
-  function preorder() {
-    setPreorderHint(true);
-    setTimeout(() => setPreorderHint(false), 1400);
-  }
-
   // ---- Slot layouts ----
   const normalSlots: Slot[] = [
     { key: "home", icon: "fa-solid fa-house", label: "Home", href: "/", active: pathname === "/" },
@@ -107,10 +130,10 @@ export default function BottomNav() {
   const productSlots: Slot[] = [
     { key: "home", icon: "fa-solid fa-house", label: "Home", href: "/" },
     {
-      key: "preorder",
-      icon: preorderHint ? "fa-solid fa-hourglass-half" : "fa-solid fa-calendar-clock",
-      label: preorderHint ? "Soon!" : "Pre order",
-      onClick: preorder,
+      key: "order",
+      icon: "fa-solid fa-bag-shopping",
+      label: "Order",
+      onClick: () => setOrderOpen(true),
     },
     {
       key: "eatlater",
@@ -175,7 +198,60 @@ export default function BottomNav() {
   const mode = inStudio ? "studio" : productId ? "product" : "normal";
 
   return (
-    <nav
+    <>
+      {orderOpen && orderTarget && (
+        <div
+          className="fixed inset-0 z-[60] bg-black/40 flex items-end justify-center"
+          onClick={() => setOrderOpen(false)}
+        >
+          <div
+            className="anim-fade-up w-full max-w-md bg-white rounded-t-3xl p-6 pb-8"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="w-10 h-1 rounded-full bg-line mx-auto mb-4" />
+            <h2 className="text-lg font-extrabold">
+              Order from {orderTarget.name}
+            </h2>
+            <p className="text-sm text-text-light mt-1">
+              {orderTarget.foodName} — order direct, no middleman.
+            </p>
+            <div className="mt-5 space-y-2.5">
+              {orderTarget.phone && (
+                <a
+                  href={`tel:${orderTarget.phone}`}
+                  className="pressable flex items-center gap-3 rounded-xl border border-line bg-card px-4 py-3 font-semibold text-sm"
+                >
+                  <i className="fa-solid fa-phone text-primary" aria-hidden />
+                  Call {orderTarget.name}
+                </a>
+              )}
+              {orderTarget.whatsapp && (
+                <a
+                  href={`https://wa.me/${orderTarget.whatsapp.replace(/\D/g, "")}?text=${encodeURIComponent(`Hi! I'd like to order ${orderTarget.foodName} from Cravely.`)}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="pressable flex items-center gap-3 rounded-xl border border-line bg-card px-4 py-3 font-semibold text-sm"
+                >
+                  <i className="fa-brands fa-whatsapp text-green-600" aria-hidden />
+                  WhatsApp {orderTarget.name}
+                </a>
+              )}
+              {!orderTarget.phone && !orderTarget.whatsapp && (
+                <p className="text-sm text-text-light">
+                  {orderTarget.name} hasn&apos;t added order contact details yet.
+                </p>
+              )}
+            </div>
+            <button
+              onClick={() => setOrderOpen(false)}
+              className="mt-5 w-full text-center text-xs text-text-light hover:text-primary transition-colors"
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      )}
+      <nav
       className="fixed bottom-5 left-1/2 -translate-x-1/2 z-50 w-[calc(100%-2.5rem)] max-w-[calc(28rem-2.5rem)]
         bg-white rounded-[30px] px-3 py-3 flex justify-between items-center
         shadow-[0_10px_30px_rgba(0,0,0,0.12)] border border-black/5"
@@ -225,6 +301,7 @@ export default function BottomNav() {
           </Link>
         );
       })}
-    </nav>
+      </nav>
+    </>
   );
 }

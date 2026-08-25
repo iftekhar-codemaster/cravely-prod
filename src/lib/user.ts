@@ -22,6 +22,10 @@ export type UserProfile = {
   restaurantId?: string;
   perms?: string[];
   createdAt?: unknown;
+  geoOptIn?: boolean;
+  locationLat?: number;
+  locationLng?: number;
+  notificationsReadAt?: unknown;
 };
 
 export function isAdminRole(role?: Role): boolean {

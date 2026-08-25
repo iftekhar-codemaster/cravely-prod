@@ -4,6 +4,7 @@ import OfferCarousel from "./OfferCarousel";
 import Reveal from "./Reveal";
 import FoodGrid from "@/components/FoodGrid";
 import type { Offer, Food } from "@/lib/data";
+import { cuisineImages } from "@/lib/mock-data";
 import { useMemo } from "react";
 
 export function HomeOffers({ offers }: { offers: Offer[] }) {
@@ -38,7 +39,10 @@ export function HomeCuisines({ cuisines }: { cuisines: string[] }) {
           >
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
-              src={`https://loremflickr.com/120/120/dish?lock=${i + 400}`}
+              src={
+                cuisineImages[cuisine] ??
+                `https://loremflickr.com/120/120/dish?lock=${i + 400}`
+              }
               alt={cuisine}
               loading="lazy"
               className="w-[84px] h-[84px] rounded-[20px] object-cover mx-auto mb-2 shadow-card"

@@ -15,6 +15,8 @@ import {
 import { getDb } from "@/lib/firebase";
 import { audit } from "@/lib/audit";
 import { uploadImage } from "@/lib/storage";
+import { sendNotification } from "@/lib/notifications";
+import { getAllRestaurants } from "@/lib/data";
 import SmartImg from "@/components/SmartImg";
 
 type Offer = {
@@ -54,6 +56,7 @@ export default function OfferManager({
   const [uploading, setUploading] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [announcingId, setAnnouncingId] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     const db = getDb()!;
@@ -153,6 +156,20 @@ export default function OfferManager({
     void audit("offer.delete", id);
     if (editingId === id) resetForm();
     await load();
+  }
+
+  async function announce(o: Offer) {
+    const name =
+      (await getAllRestaurants()).find((r) => r.id === restaurantId)?.name ??
+      "a local restaurant";
+    const body = o.code ? `${o.title} — code ${o.code}` : o.title;
+    await sendNotification({
+      title: `🎉 New offer at ${name}`,
+      body,
+      audience: { type: "all" },
+      offerId: o.id,
+      restaurantId,
+    });
   }
 
   return (
@@ -309,6 +326,25 @@ export default function OfferManager({
                 >
                   {live ? "Live" : expired ? "Expired" : "Paused"}
                 </span>
+                {canWrite && live && (
+                  <button
+                    onClick={() => {
+                      if (!confirm(`Announce "${o.title}" to all users?`)) return;
+                      setAnnouncingId(o.id);
+                      void announce(o)
+                        .catch(() => alert("Announce failed"))
+                        .finally(() => setAnnouncingId(null));
+                    }}
+                    disabled={announcingId === o.id}
+                    aria-label={`Announce ${o.title}`}
+                    className="w-7 h-7 rounded-full bg-background text-text-light hover:text-primary disabled:opacity-40 transition-colors flex-shrink-0"
+                  >
+                    <i
+                      className={`fa-solid ${announcingId === o.id ? "fa-spinner fa-spin" : "fa-bullhorn"} text-xs`}
+                      aria-hidden
+                    />
+                  </button>
+                )}
                 <button
                   onClick={() => canWrite && startEdit(o)}
                   disabled={!canWrite}

@@ -11,6 +11,7 @@ import {
   type Restaurant,
 } from "@/lib/data";
 import { getPackage, addToPackage } from "@/lib/store";
+import { useUserLocation } from "@/lib/useUserLocation";
 import SmartImg from "@/components/SmartImg";
 
 export default function PackageBuilder() {
@@ -20,6 +21,7 @@ export default function PackageBuilder() {
   const [radiusKm, setRadiusKm] = useState(5);
   const [results, setResults] = useState<PackageResult[] | null>(null);
   const [comparing, setComparing] = useState(false);
+  const userLoc = useUserLocation();
 
   useEffect(() => {
     getAllFoods().then(setAllFoods);
@@ -60,7 +62,7 @@ export default function PackageBuilder() {
   async function compare() {
     setComparing(true);
     try {
-      setResults(await buildPackages(selected, radiusKm));
+      setResults(await buildPackages(selected, radiusKm, userLoc ?? undefined));
     } finally {
       setComparing(false);
     }
@@ -326,10 +328,17 @@ export default function PackageBuilder() {
       <section className="px-4 pb-24">
         <h2 className="font-bold text-sm mt-8 mb-3">
           Quick add
-          <span className="text-text-light font-normal"> — popular right now</span>
+          <span className="text-text-light font-normal"> — top rated</span>
         </h2>
         <div className="flex gap-2 flex-wrap">
-          {allFoods.slice(0, 10).map((food) => {
+          {[...allFoods]
+            .sort(
+              (a, b) =>
+                b.rating * Math.log10(1 + b.reviews) -
+                a.rating * Math.log10(1 + a.reviews),
+            )
+            .slice(0, 10)
+            .map((food) => {
             const on = selected.includes(food.id);
             return (
               <button

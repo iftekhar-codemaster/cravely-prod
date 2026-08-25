@@ -13,6 +13,7 @@ import {
   getStories,
 } from "@/lib/data";
 import { APP_URL } from "@/lib/site";
+import { getSocialLinks, type SocialLinks } from "@/lib/social";
 
 export const revalidate = 60;
 
@@ -21,12 +22,13 @@ export const metadata: Metadata = {
 };
 
 export default async function HomePage() {
-  const [foods, restaurants, offers, cuisines, stories] = await Promise.all([
+  const [foods, restaurants, offers, cuisines, stories, social] = await Promise.all([
     getAllFoods(),
     getAllRestaurants(),
     getOffers(),
     getCuisines(),
     getStories(),
+    getSocialLinks(),
   ]);
 
   return (
@@ -62,15 +64,43 @@ export default async function HomePage() {
 
       {/* Footer */}
       <footer className="mt-8 py-8 text-center border-t border-line">
-        <div className="flex justify-center gap-5 text-2xl text-text-light mb-3">
-          <a href="#" aria-label="Facebook"><i className="fa-brands fa-facebook" aria-hidden /></a>
-          <a href="#" aria-label="Instagram"><i className="fa-brands fa-instagram" aria-hidden /></a>
-          <a href="#" aria-label="Twitter"><i className="fa-brands fa-twitter" aria-hidden /></a>
-        </div>
+        <SocialLinksFooter links={social} />
         <p className="text-sm text-text-light">
           © {new Date().getFullYear()} Cravely. All rights reserved.
         </p>
       </footer>
+    </div>
+  );
+}
+
+const SOCIAL_ICONS: {
+  key: keyof SocialLinks;
+  label: string;
+  icon: string;
+}[] = [
+  { key: "facebook", label: "Facebook", icon: "fa-brands fa-facebook" },
+  { key: "instagram", label: "Instagram", icon: "fa-brands fa-instagram" },
+  { key: "twitter", label: "Twitter", icon: "fa-brands fa-twitter" },
+  { key: "whatsapp", label: "WhatsApp", icon: "fa-brands fa-whatsapp" },
+];
+
+function SocialLinksFooter({ links }: { links: SocialLinks }) {
+  const active = SOCIAL_ICONS.filter(({ key }) => Boolean(links[key]));
+  if (active.length === 0) return null;
+  return (
+    <div className="flex justify-center gap-5 text-2xl text-text-light mb-3">
+      {active.map(({ key, label, icon }) => (
+        <a
+          key={key}
+          href={links[key] as string}
+          aria-label={label}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="hover:text-primary transition-colors"
+        >
+          <i className={icon} aria-hidden />
+        </a>
+      ))}
     </div>
   );
 }

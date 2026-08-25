@@ -29,8 +29,28 @@ const STATUS_STYLES = {
   rejected: "bg-red-100 text-red-600",
 } as const;
 
-function randomLock(): number {
-  return Math.floor(Math.random() * 900);
+// Curated placeholder imagery assigned on approval. Admins can replace
+// these per restaurant later in the database editor (/console/admin/database).
+const HERO_IMAGES = [
+  "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=1200&q=80",
+  "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=1200&q=80",
+  "https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=1200&q=80",
+  "https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=1200&q=80",
+  "https://images.unsplash.com/photo-1466978913421-dad2ebd01d17?w=1200&q=80",
+  "https://images.unsplash.com/photo-1544025162-d76694265947?w=1200&q=80",
+];
+
+const LOGO_IMAGES = [
+  "https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?w=200&h=200&fit=crop&q=80",
+  "https://images.unsplash.com/photo-1571091718767-18b5b1457add?w=200&h=200&fit=crop&q=80",
+  "https://images.unsplash.com/photo-1585937421612-70a008356fbe?w=200&h=200&fit=crop&q=80",
+  "https://images.unsplash.com/photo-1601050690597-df0568f70950?w=200&h=200&fit=crop&q=80",
+  "https://images.unsplash.com/photo-1578985545062-69928b1d9587?w=200&h=200&fit=crop&q=80",
+  "https://images.unsplash.com/photo-1563245372-f21724e3856d?w=200&h=200&fit=crop&q=80",
+];
+
+function curatedImage(images: string[], approvedCount: number): string {
+  return images[approvedCount % images.length];
 }
 
 export default function AdminApplicationsPage() {
@@ -80,6 +100,8 @@ export default function AdminApplicationsPage() {
         { decision, name: app.name, applicant: app.email },
       );
       if (decision === "approved") {
+        // Round-robin through the curated set based on how many are live already
+        const approvedCount = (apps ?? []).filter((a) => a.status === "approved").length;
         // Create the verified public restaurant listing
         const slug =
           app.name
@@ -91,8 +113,8 @@ export default function AdminApplicationsPage() {
           cuisine: app.cuisine || "Local",
           rating: 0,
           reviews: 0,
-          image: `https://loremflickr.com/600/400/restaurant?lock=${randomLock()}`,
-          logo: `https://loremflickr.com/100/100/logo?lock=${randomLock()}`,
+          image: curatedImage(HERO_IMAGES, approvedCount),
+          logo: curatedImage(LOGO_IMAGES, approvedCount),
           address: app.address || "",
           distanceKm: 0,
           openUntil: "—",

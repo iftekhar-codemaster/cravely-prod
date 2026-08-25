@@ -424,4 +424,21 @@ export const cuisines: string[] = [
   "Chicken",
 ];
 
+// Curated Unsplash imagery per seeded cuisine — falls back to the generated
+// loremflickr URL in HomeCuisines when a cuisine has no mapping here.
+export const cuisineImages: Record<string, string> = {
+  Biryani: "https://images.unsplash.com/photo-1589302168068-964664d93dc0?w=400&q=80",
+  Pizza: "https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?w=400&q=80",
+  "Fast Food": "https://images.unsplash.com/photo-1550547660-d9450f859349?w=400&q=80",
+  Bangladeshi: "https://images.unsplash.com/photo-1585937421612-70a008356fbe?w=400&q=80",
+  Burgers: "https://images.unsplash.com/photo-1571091718767-18b5b1457add?w=400&q=80",
+  Cakes: "https://images.unsplash.com/photo-1565958011703-44f9829ba187?w=400&q=80",
+  "Rice Dishes": "https://images.unsplash.com/photo-1512058564366-18510be2db19?w=400&q=80",
+  Snacks: "https://images.unsplash.com/photo-1601050690597-df0568f70950?w=400&q=80",
+  Kebab: "https://images.unsplash.com/photo-1555939594-58d7cb561ad1?w=400&q=80",
+  Sweets: "https://images.unsplash.com/photo-1578985545062-69928b1d9587?w=400&q=80",
+  Chinese: "https://images.unsplash.com/photo-1563245372-f21724e3856d?w=400&q=80",
+  Chicken: "https://images.unsplash.com/photo-1562967914-608f82629710?w=400&q=80",
+};
+
 

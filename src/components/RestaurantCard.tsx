@@ -1,7 +1,14 @@
 import Link from "next/link";
 import type { Restaurant } from "@/lib/data";
 
-export default function RestaurantCard({ restaurant }: { restaurant: Restaurant }) {
+export default function RestaurantCard({
+  restaurant,
+  distanceKm,
+}: {
+  restaurant: Restaurant;
+  distanceKm?: number;
+}) {
+  const shownKm = distanceKm ?? restaurant.distanceKm;
   return (
     <Link
       href={`/restaurants/${restaurant.id}`}
@@ -31,7 +38,10 @@ export default function RestaurantCard({ restaurant }: { restaurant: Restaurant 
             {restaurant.rating}
           </span>
           <span className="text-text-light">({restaurant.reviews}+)</span>
-          <span className="text-text-light">· {restaurant.distanceKm} km</span>
+          <span className="text-text-light">
+            ·{" "}
+            {distanceKm != null ? `${shownKm.toFixed(1)} km away` : `${shownKm} km`}
+          </span>
         </div>
         <div className="text-[11px] text-text-light mt-1 truncate">
           Open until {restaurant.openUntil}

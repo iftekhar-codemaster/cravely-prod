@@ -126,7 +126,7 @@ service cloud.firestore {
 
     // Global system settings — admins read, super admin writes
     match /systemSettings/{id} {
-      allow read: if isAdmin();
+      allow read: if true;
       allow write: if isSuperAdmin();
     }
 
@@ -140,6 +140,17 @@ service cloud.firestore {
         || (signedIn() && resource.data.uid == request.auth.uid);
       allow update: if isAdmin();
       allow delete: if isSuperAdmin();
+    }
+
+    match /notifications/{id} {
+      allow read: if signedIn();
+      allow create: if isAdmin()
+        && request.resource.data.title is string
+        && request.resource.data.title.size() > 0
+        && request.resource.data.title.size() <= 120
+        && request.resource.data.body is string
+        && request.resource.data.body.size() <= 500;
+      allow update, delete: if isSuperAdmin();
     }
   }
 }
