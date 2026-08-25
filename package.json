@@ -8,7 +8,8 @@
     "start": "next start",
     "lint": "eslint",
     "seed": "node --env-file-if-exists=.env.local scripts/seed.ts",
-    "bootstrap:admin": "node --env-file-if-exists=.env.local scripts/bootstrap-admin.ts"
+    "bootstrap:admin": "node --env-file-if-exists=.env.local scripts/bootstrap-admin.ts",
+    "upload:healthcheck": "node --env-file-if-exists=.env scripts/upload-healthcheck.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1116.0",
