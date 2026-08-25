@@ -2,7 +2,9 @@
 // are configured, otherwise falls back to the bundled mock dataset so the
 // app still runs in development. The UI only ever calls these functions.
 //
-// Run `npm run seed` once to populate Firestore from src/lib/mock-data.ts.
+// When Firebase IS configured, Firestore is the single source of truth:
+// an empty collection renders as empty (no mock substitution), and reads are
+// cached for CACHE_TTL ms to keep costs/latency sane.
 
 import { collection, getDocs } from "firebase/firestore";
 import { getDb, isFirebaseConfigured } from "./firebase";
@@ -34,85 +36,56 @@ export type PackageResult = {
   items: { food: Food; price: number }[];
 };
 
-const cache: {
-  restaurants?: Restaurant[];
-  foods?: Food[];
-  stories?: Story[];
-  offers?: Offer[];
-  cuisines?: string[];
-} = {};
+const CACHE_TTL = 60_000;
 
-async function fetchCollection<T extends object>(name: string): Promise<T[]> {
-  const db = getDb();
-  if (!db) return [];
-  const snap = await getDocs(collection(db, name));
-  return snap.docs.map((d) => ({ id: d.id, ...(d.data() as object) })) as T[];
+const cache: Record<
+  string,
+  { rows: unknown[]; at: number } | undefined
+> = {};
+
+async function getCached<T>(
+  key: string,
+  collectionName: string,
+  fallback: T[],
+): Promise<T[]> {
+  if (!isFirebaseConfigured) return fallback;
+  const hit = cache[key];
+  if (hit && Date.now() - hit.at < CACHE_TTL) return hit.rows as T[];
+  try {
+    const db = getDb();
+    if (!db) return fallback;
+    const snap = await getDocs(collection(db, collectionName));
+    const rows = snap.docs.map((d) => ({
+      id: d.id,
+      ...(d.data() as object),
+    })) as T[];
+    cache[key] = { rows, at: Date.now() };
+    return rows;
+  } catch (err) {
+    console.warn(`[cravely] Failed to load ${collectionName}:`, err);
+    // serve stale cache if we have one, otherwise the fallback
+    return (hit?.rows as T[]) ?? fallback;
+  }
 }
 
-export async function getAllRestaurants(): Promise<Restaurant[]> {
-  if (!isFirebaseConfigured) return mockRestaurants;
-  if (cache.restaurants) return cache.restaurants;
-  try {
-    const rows = await fetchCollection<Restaurant>("restaurants");
-    cache.restaurants = rows.length ? rows : mockRestaurants;
-  } catch (err) {
-    console.warn("[cravely] Failed to load restaurants:", err);
-    cache.restaurants = mockRestaurants;
-  }
-  return cache.restaurants;
+export function getAllRestaurants(): Promise<Restaurant[]> {
+  return getCached<Restaurant>("restaurants", "restaurants", mockRestaurants);
 }
 
-export async function getAllFoods(): Promise<Food[]> {
-  if (!isFirebaseConfigured) return mockFoods;
-  if (cache.foods) return cache.foods;
-  try {
-    const rows = await fetchCollection<Food>("foods");
-    cache.foods = rows.length ? rows : mockFoods;
-  } catch (err) {
-    console.warn("[cravely] Failed to load foods:", err);
-    cache.foods = mockFoods;
-  }
-  return cache.foods;
+export function getAllFoods(): Promise<Food[]> {
+  return getCached<Food>("foods", "foods", mockFoods);
 }
 
-export async function getStories(): Promise<Story[]> {
-  if (!isFirebaseConfigured) return mockStories;
-  if (cache.stories) return cache.stories;
-  try {
-    const rows = await fetchCollection<Story>("stories");
-    cache.stories = rows.length ? rows : mockStories;
-  } catch (err) {
-    console.warn("[cravely] Failed to load stories:", err);
-    cache.stories = mockStories;
-  }
-  return cache.stories;
+export function getStories(): Promise<Story[]> {
+  return getCached<Story>("stories", "stories", mockStories);
 }
 
-export async function getOffers(): Promise<Offer[]> {
-  if (!isFirebaseConfigured) return mockOffers;
-  if (cache.offers) return cache.offers;
-  try {
-    const rows = await fetchCollection<Offer>("offers");
-    cache.offers = rows.length ? rows : mockOffers;
-  } catch (err) {
-    console.warn("[cravely] Failed to load offers:", err);
-    cache.offers = mockOffers;
-  }
-  return cache.offers;
+export function getOffers(): Promise<Offer[]> {
+  return getCached<Offer>("offers", "offers", mockOffers);
 }
 
-export async function getCuisines(): Promise<string[]> {
-  if (!isFirebaseConfigured) return mockCuisines;
-  if (cache.cuisines) return cache.cuisines;
-  try {
-    const docs = await fetchCollection<{ items?: string[] }>("cuisines");
-    const items = docs[0]?.items;
-    cache.cuisines = items?.length ? items : mockCuisines;
-  } catch (err) {
-    console.warn("[cravely] Failed to load cuisines:", err);
-    cache.cuisines = mockCuisines;
-  }
-  return cache.cuisines;
+export function getCuisines(): Promise<string[]> {
+  return getCached<string>("cuisines", "cuisines", mockCuisines);
 }
 
 export async function getRestaurant(id: string): Promise<Restaurant | undefined> {
@@ -130,14 +103,6 @@ export async function getFoodsByRestaurant(restaurantId: string): Promise<Food[]
   return all.filter((f) => f.restaurantId === restaurantId);
 }
 
-export async function getFoodsByIds(ids: string[]): Promise<Food[]> {
-  if (!ids.length) return [];
-  const all = await getAllFoods();
-  return ids
-    .map((id) => all.find((f) => f.id === id))
-    .filter((f): f is Food => Boolean(f));
-}
-
 export async function searchFoods(query: string): Promise<Food[]> {
   const all = await getAllFoods();
   const q = query.toLowerCase();
@@ -145,6 +110,13 @@ export async function searchFoods(query: string): Promise<Food[]> {
     (f) =>
       f.name.toLowerCase().includes(q) || f.category.toLowerCase().includes(q),
   );
+}
+
+export async function getFoodsByIds(ids: string[]): Promise<Food[]> {
+  const all = await getAllFoods();
+  return ids
+    .map((id) => all.find((f) => f.id === id))
+    .filter((f): f is Food => Boolean(f));
 }
 
 export async function getRelatedFoods(food: Food): Promise<Food[]> {
@@ -184,16 +156,13 @@ export async function buildPackages(
     const items: { food: Food; price: number }[] = [];
     let hasAll = true;
     for (const name of wantedNames) {
-      const wanted =
-        allFoods.find((f) => f.name === name && dishIds.some((id) => f.id === id)) ??
-        allFoods.find((f) => f.name === name);
+      const wanted = allFoods.find((f) => dishIds.includes(f.id) && f.name === name);
       const match =
         allFoods.find((f) => f.restaurantId === restaurant.id && f.name === name) ??
         // fallback: closest category match within the same restaurant
         (wanted &&
           allFoods.find(
-            (f) =>
-              f.restaurantId === restaurant.id && f.category === wanted.category,
+            (f) => f.restaurantId === restaurant.id && f.category === wanted.category,
           ));
       if (!match) {
         hasAll = false;

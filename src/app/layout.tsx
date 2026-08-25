@@ -10,10 +10,6 @@ export const metadata: Metadata = {
   description:
     "Discover nearby restaurants, dishes, prices and ratings. Build packages and compare prices across restaurants near you.",
   manifest: "/manifest.webmanifest",
-  icons: {
-    icon: "/favicon.ico",
-    apple: "/apple-touch-icon.png",
-  },
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",

@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import Image from "next/image";
 import { getAllFoods, getAllRestaurants } from "@/lib/data";
 
 const LINES = [
@@ -40,19 +39,6 @@ export default function HomeHeader() {
 
   return (
     <div className="anim-fade-up">
-      <div className="flex items-center gap-2 mb-3">
-        <Image
-          src="/icon-192.png"
-          alt="Cravely logo"
-          width={32}
-          height={32}
-          priority
-          className="rounded-lg"
-        />
-        <span className="text-lg font-extrabold leading-none">
-          <span className="text-primary">Crave</span>ly
-        </span>
-      </div>
       <div className="flex items-center justify-between gap-3">
         {/* Location chip */}
         <Link
