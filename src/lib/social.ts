@@ -23,8 +23,13 @@ export async function getSocialLinks(): Promise<SocialLinks> {
   }
 }
 
-export function saveSocialLinks(links: SocialLinks): Promise<void> {
+export async function saveSocialLinks(links: SocialLinks): Promise<void> {
   const db = getDb();
   if (!db) return Promise.reject(new Error("Firebase is not configured."));
-  return setDoc(doc(db, "systemSettings", "social"), links, { merge: true });
+  // Firestore rejects undefined field values — include only filled fields.
+  const clean: SocialLinks = {};
+  for (const [k, v] of Object.entries(links)) {
+    if (typeof v === "string" && v.trim()) clean[k as keyof SocialLinks] = v.trim();
+  }
+  return setDoc(doc(db, "systemSettings", "social"), clean, { merge: true });
 }
