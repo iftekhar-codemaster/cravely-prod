@@ -10,7 +10,11 @@
       "cravely-prod.firebaseapp.com"
     ],
     "providers": {
-      "emailPassword": true
+      "emailPassword": true,
+      "googleSignIn": {
+        "oAuthBrandDisplayName": "Cravely",
+        "supportEmail": "itx.iftekhars@gmail.com"
+      }
     }
   },
   "firestore": {

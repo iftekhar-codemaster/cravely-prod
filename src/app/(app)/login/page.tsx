@@ -4,7 +4,9 @@ import { Suspense, useState, type FormEvent } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
+import { sendPasswordResetEmail } from "firebase/auth";
 import { useAuth, GoogleLinkNeededError } from "@/components/AuthProvider";
+import { getFirebaseAuth } from "@/lib/firebase";
 
 function GoogleIcon() {
   return (
@@ -54,7 +56,7 @@ function LoginForm() {
   const searchParams = useSearchParams();
   const next = searchParams.get("next") ?? "/profile";
 
-  const [mode, setMode] = useState<"signin" | "signup">("signin");
+  const [mode, setMode] = useState<"signin" | "signup" | "reset">("signin");
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -63,6 +65,7 @@ function LoginForm() {
   const [linkEmail, setLinkEmail] = useState<string | null>(null);
   const [linkPw, setLinkPw] = useState("");
   const [linkBusy, setLinkBusy] = useState(false);
+  const [resetSent, setResetSent] = useState(false);
 
   function friendly(code: string): string {
     if (code === "auth/invalid-credential" || code === "auth/wrong-password")
@@ -102,6 +105,21 @@ function LoginForm() {
       else await signUp(name.trim(), email.trim(), password);
       router.push(next);
       router.refresh();
+    } catch (err) {
+      setError(friendly((err as { code?: string }).code ?? ""));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function handleReset(e: FormEvent) {
+    e.preventDefault();
+    const auth = getFirebaseAuth();
+    if (!auth || !email.trim()) return;    setError(null);
+    setBusy(true);
+    try {
+      await sendPasswordResetEmail(auth, email.trim());
+      setResetSent(true);
     } catch (err) {
       setError(friendly((err as { code?: string }).code ?? ""));
     } finally {
@@ -183,6 +201,72 @@ function LoginForm() {
     );
   }
 
+  if (mode === "reset") {
+    return (
+      <div className="px-5 pt-12 pb-10">
+        <div className="mb-8 text-center">
+          <div className="w-12 h-12 rounded-2xl bg-primary/10 text-primary flex items-center justify-center text-xl mx-auto mb-4">
+            <i className="fa-solid fa-key" aria-hidden />
+          </div>
+          <h1 className="text-xl font-extrabold">Reset your password</h1>
+          <p className="text-sm text-text-light mt-2">
+            Enter your email and we&apos;ll send you a reset link.
+          </p>
+        </div>
+
+        {resetSent ? (
+          <div className="text-center">
+            <div className="rounded-xl bg-green-50 px-4 py-3 text-sm text-green-700">
+              Reset email sent to <b>{email.trim()}</b>. Check your inbox (and
+              spam folder) — the link lets you set a new password.
+            </div>
+            <button
+              onClick={() => {
+                setMode("signin");
+                setResetSent(false);
+              }}
+              className="mt-6 text-sm font-semibold text-primary pressable"
+            >
+              ← Back to sign in
+            </button>
+          </div>
+        ) : (
+          <form onSubmit={handleReset} className="space-y-4">
+            <input
+              type="email"
+              required
+              placeholder="Email address"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              autoComplete="email"
+              className="w-full rounded-xl border border-line bg-card px-4 py-3 text-sm outline-none focus:border-primary transition-colors"
+            />
+            {error && (
+              <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-primary">{error}</p>
+            )}
+            <button
+              type="submit"
+              disabled={busy}
+              className="w-full bg-primary py-3 font-semibold text-white rounded-full disabled:opacity-50"
+            >
+              {busy ? "Sending…" : "Send reset link"}
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setMode("signin");
+                setError(null);
+              }}
+              className="w-full text-center text-xs text-text-light hover:text-primary transition-colors"
+            >
+              ← Back to sign in
+            </button>
+          </form>
+        )}
+      </div>
+    );
+  }
+
   return (
     <div className="px-5 pt-12 pb-10">
       <div className="mb-9 text-center">
@@ -246,6 +330,18 @@ function LoginForm() {
         >
           {busy ? "Please wait…" : mode === "signin" ? "Sign in" : "Create account"}
         </button>
+        {mode === "signin" && (
+          <button
+            type="button"
+            onClick={() => {
+              setMode("reset");
+              setError(null);
+            }}
+            className="w-full text-center text-xs text-text-light hover:text-primary transition-colors"
+          >
+            Forgot your password?
+          </button>
+        )}
       </form>
 
       <div className="my-5 flex items-center gap-3">
