@@ -85,7 +85,24 @@ export function getOffers(): Promise<Offer[]> {
 }
 
 export function getCuisines(): Promise<string[]> {
-  return getCached<string>("cuisines", "cuisines", mockCuisines);
+  // cuisines doc shape: { id: "default", items: string[] } — unwrap it
+  if (!isFirebaseConfigured) return Promise.resolve(mockCuisines);
+  const hit = cache.cuisines;
+  if (hit && Date.now() - hit.at < CACHE_TTL) return Promise.resolve(hit.rows as string[]);
+  return (async () => {
+    try {
+      const db = getDb();
+      if (!db) return mockCuisines;
+      const snap = await getDocs(collection(db, "cuisines"));
+      const first = snap.docs[0]?.data() as { items?: string[] } | undefined;
+      const rows = first?.items?.length ? first.items : mockCuisines;
+      cache.cuisines = { rows, at: Date.now() };
+      return rows;
+    } catch (err) {
+      console.warn("[cravely] Failed to load cuisines:", err);
+      return (hit?.rows as string[]) ?? mockCuisines;
+    }
+  })();
 }
 
 export async function getRestaurant(id: string): Promise<Restaurant | undefined> {
