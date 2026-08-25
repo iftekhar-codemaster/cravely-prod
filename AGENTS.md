@@ -19,8 +19,8 @@ Both scripts run plain Node directly on `.ts` files (`node --env-file-if-exists=
 
 - `src/lib/data.ts` reads live Firestore collections seeded by `npm run seed`; `src/lib/mock-data.ts` is the source dataset.
 - Access control lives in `firestore.rules`: roles on each user doc are `super_admin`, `admin` (platform staff), `restaurant` (scoped to own `restaurantId`). Client mirrors this in `src/lib/user.ts` / `src/lib/adminSecurity.ts` (admin passkeys, IP allowlist enforcement toggle).
-- Routes: consumer app at `/` (restaurants, search, product, liked, maps), admin panel under `/console/admin`, restaurant owner console at `/console/restaurant`. Only two API routes exist: `/api/my-ip`, `/api/upload`.
-- Deployed on Vercel; canonical domain is `cravely.zone.id` — `vercel.json` redirects `cravely-prod.vercel.app` to it. If adding auth domains or new hosting domains, update `firebase.json` authorizedDomains and deploy rules/indexes via Firebase CLI.
+- Routes: two hosts, one deployment, split by `src/proxy.ts` (Next 16 proxy convention, not middleware.ts): `cravely.space`/`www` → landing page (`src/app/(marketing)/` — `/landing` rewritten to serve `/`, plus `/privacy`, `/terms`), `app.cravely.space` → consumer app (`src/app/(app)/` — home, restaurants, search, product, liked, maps, packages, profile, console pages). Only two API routes exist: `/api/my-ip`, `/api/upload`. Canonical origin for app metadata is `https://app.cravely.space` (`metadataBase` in `src/app/layout.tsx`; override hosts via `NEXT_PUBLIC_APP_URL` / `NEXT_PUBLIC_LANDING_URL`).
+- Deployed on Vercel; `vercel.json` 308-redirects `cravely-prod.vercel.app` and `cravely.zone.id` to `app.cravely.space`. If adding auth domains or new hosting domains, update `firebase.json` authorizedDomains and deploy rules/indexes via Firebase CLI.
 
 ## Conventions
 

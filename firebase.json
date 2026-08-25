@@ -2,6 +2,9 @@
   "auth": {
     "authorizedDomains": [
       "localhost",
+      "cravely.space",
+      "www.cravely.space",
+      "app.cravely.space",
       "cravely.zone.id",
       "cravely-prod.vercel.app",
       "cravely-prod.firebaseapp.com"

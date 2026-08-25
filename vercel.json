@@ -3,8 +3,14 @@
     {
       "source": "/:path*",
       "has": [{ "type": "host", "value": "cravely-prod.vercel.app" }],
-      "destination": "https://cravely.zone.id/:path*",
-      "permanent": false
+      "destination": "https://app.cravely.space/:path*",
+      "permanent": true
+    },
+    {
+      "source": "/:path*",
+      "has": [{ "type": "host", "value": "cravely.zone.id" }],
+      "destination": "https://app.cravely.space/:path*",
+      "permanent": true
     }
   ]
 }
