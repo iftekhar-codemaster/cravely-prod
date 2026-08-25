@@ -6,7 +6,14 @@
 // an empty collection renders as empty (no mock substitution), and reads are
 // cached for CACHE_TTL ms to keep costs/latency sane.
 
-import { collection, getDocs } from "firebase/firestore";
+import {
+  collection,
+  getDocs,
+  addDoc,
+  query,
+  where,
+  serverTimestamp,
+} from "firebase/firestore";
 import { getDb, isFirebaseConfigured } from "./firebase";
 import {
   restaurants as mockRestaurants,
@@ -14,7 +21,6 @@ import {
   stories as mockStories,
   offers as mockOffers,
   cuisines as mockCuisines,
-  reviewPool,
   type Restaurant,
   type Food,
   type Review,
@@ -80,8 +86,14 @@ export function getStories(): Promise<Story[]> {
   return getCached<Story>("stories", "stories", mockStories);
 }
 
-export function getOffers(): Promise<Offer[]> {
-  return getCached<Offer>("offers", "offers", mockOffers);
+export async function getOffers(): Promise<Offer[]> {
+  const all = await getCached<Offer>("offers", "offers", mockOffers);
+  const now = Date.now();
+  return all.filter(
+    (o) =>
+      o.active !== false &&
+      (!o.expiresAt || new Date(o.expiresAt).getTime() > now),
+  );
 }
 
 export function getCuisines(): Promise<string[]> {
@@ -141,9 +153,72 @@ export async function getRelatedFoods(food: Food): Promise<Food[]> {
   return all.filter((f) => f.id !== food.id).slice(0, 3);
 }
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-export function getReviews(_subject: string): Review[] {
-  return reviewPool.default;
+export type ReviewDoc = Review & {
+  id: string;
+  foodId: string;
+  authorId: string;
+  rating: number;
+  createdAt?: unknown;
+};
+
+function tsOf(value: unknown): number {
+  const t = (value as { toDate?: () => Date; seconds?: number } | null | undefined)?.toDate
+    ? (value as { toDate: () => Date }).toDate().getTime()
+    : typeof (value as { seconds?: number })?.seconds === "number"
+      ? (value as { seconds: number }).seconds * 1000
+      : 0;
+  return t;
+}
+
+/** Real reviews for a dish, newest first. Empty when Firestore is not configured. */
+export async function getReviews(foodId: string): Promise<ReviewDoc[]> {
+  const db = getDb();
+  if (!db) return [];
+  try {
+    const snap = await getDocs(
+      query(collection(db, "reviews"), where("foodId", "==", foodId)),
+    );
+    const rows = snap.docs.map((d) => {
+      const data = d.data() as Partial<ReviewDoc>;
+      return {
+        id: d.id,
+        foodId,
+        authorId: data.authorId ?? "",
+        author: data.author ?? "Anonymous",
+        text: data.text ?? "",
+        rating: data.rating ?? 0,
+        createdAt: data.createdAt,
+      };
+    });
+    rows.sort((a, b) => tsOf(b.createdAt) - tsOf(a.createdAt));
+    return rows;
+  } catch (err) {
+    console.warn(`[cravely] Failed to load reviews for ${foodId}:`, err);
+    return [];
+  }
+}
+
+/** Adds a review. Returns the created review id, or null when unavailable. */
+export async function submitReview(input: {
+  foodId: string;
+  restaurantId?: string;
+  authorId: string;
+  authorName: string;
+  rating: number;
+  text: string;
+}): Promise<string | null> {
+  const db = getDb();
+  if (!db || !isFirebaseConfigured) return null;
+  const ref = await addDoc(collection(db, "reviews"), {
+    foodId: input.foodId,
+    restaurantId: input.restaurantId ?? null,
+    authorId: input.authorId,
+    authorName: input.authorName,
+    rating: Math.round(input.rating),
+    text: input.text.trim().slice(0, 1000),
+    createdAt: serverTimestamp(),
+  });
+  return ref.id;
 }
 
 /**

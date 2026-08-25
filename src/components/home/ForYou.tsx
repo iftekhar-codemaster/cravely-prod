@@ -42,12 +42,13 @@ export default function ForYou({
   }
 
   function setGeoOptedin_safe(v: boolean) {
-    // wrapped so a denied permission still records the attempt-free fallback
+    // Only record opt-in when the user actually grants permission; a deny
+    // keeps personalization honest instead of faking proximity.
     try {
       if (navigator.geolocation) {
         navigator.geolocation.getCurrentPosition(
           () => setGeoOptedIn(true),
-          () => setGeoOptedIn(true), // even on deny, boost nearby using known area
+          () => setGeoOptedIn(false),
           { timeout: 4000 },
         );
       } else {

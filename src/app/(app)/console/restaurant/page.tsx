@@ -18,8 +18,10 @@ import { getDb } from "@/lib/firebase";
 import { audit } from "@/lib/audit";
 import SmartImg from "@/components/SmartImg";
 import type { Food } from "@/lib/data";
+import { isAdminRole } from "@/lib/user";
 import { ApplyWizard, AddDishWizard } from "@/components/console/Wizards";
 import StoryManager from "@/components/console/StoryManager";
+import OfferManager from "@/components/console/OfferManager";
 import StoryComposer from "@/components/console/StoryComposer";
 import SettingsTab from "@/components/console/SettingsTab";
 import LocationSetter from "@/components/console/LocationSetter";
@@ -272,6 +274,12 @@ function RestaurantStudio() {
                   key={storiesVersion}
                   restaurantId={effRestaurantId}
                 />
+                <div className="mt-6">
+                  <OfferManager
+                    restaurantId={effRestaurantId}
+                    canWrite={isAdminRole(profile?.role)}
+                  />
+                </div>
               </div>
             </>
           ) : (

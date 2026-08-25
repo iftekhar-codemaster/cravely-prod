@@ -23,6 +23,7 @@ import {
 } from "firebase/auth";
 import type { FirebaseError } from "firebase/app";
 import { getFirebaseAuth } from "@/lib/firebase";
+import { mergeUserState } from "@/lib/userState";
 import {
   ensureUserProfile,
   OWNER_EMAIL,
@@ -108,6 +109,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!user || profile?.uid === user.uid) return;
     let alive = true;
+    void mergeUserState(user.uid);
     ensureUserProfile(user)
       .then((p) => alive && setProfile(p))
       .catch((e) => console.warn("[cravely] profile load failed:", e));

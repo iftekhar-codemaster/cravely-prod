@@ -2,6 +2,9 @@
 
 // Behavioral signals stored locally: loved dishes (existing store.ts),
 // product views and geo opt-in. Feeds the recommendation engine.
+// Signed-in users get these mirrored to their Firestore profile (userState.ts).
+
+import { syncUserField, syncUserViews } from "./userState";
 
 const VIEWS_KEY = "cravely:views";
 const GEO_KEY = "cravely:geo";
@@ -28,6 +31,7 @@ export function trackView(foodId: string): void {
   const views = getViews();
   views[foodId] = Math.min((views[foodId] ?? 0) + 1, 10);
   window.localStorage.setItem(VIEWS_KEY, JSON.stringify(views));
+  syncUserViews(views);
 }
 
 export function isGeoOptedIn(): boolean {
@@ -38,6 +42,7 @@ export function isGeoOptedIn(): boolean {
 export function setGeoOptedIn(v: boolean): void {
   if (typeof window === "undefined") return;
   window.localStorage.setItem(GEO_KEY, v ? "1" : "0");
+  syncUserField("geoOptIn", v);
 }
 
 /** One-shot aggregated signal snapshot for scoring. */

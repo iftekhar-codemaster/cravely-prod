@@ -5,6 +5,7 @@ import CloseButton from "@/components/CloseButton";
 import ViewTracker from "@/components/ViewTracker";
 import SmartImg from "@/components/SmartImg";
 import LocationMap from "@/components/LocationMap";
+import ReviewSection from "@/components/ReviewSection";
 import {
   getFood,
   getFoodsByIds,
@@ -56,7 +57,11 @@ export default async function ProductPage({ params }: Props) {
     );
     related = [...paired, ...extra].slice(0, 4);
   }
-  const reviews = getReviews(foodId);
+  const reviews = await getReviews(foodId);
+  const realRating =
+    reviews.length > 0
+      ? reviews.reduce((s, r) => s + r.rating, 0) / reviews.length
+      : food.rating;
 
   const jsonLd = [
     {
@@ -68,15 +73,23 @@ export default async function ProductPage({ params }: Props) {
       ...(restaurant
         ? { brand: { "@type": "Brand", name: restaurant.name } }
         : {}),
-      ...(food.rating > 0
+      ...(reviews.length > 0
         ? {
             aggregateRating: {
               "@type": "AggregateRating",
-              ratingValue: food.rating,
-              reviewCount: food.reviews,
+              ratingValue: Number(realRating.toFixed(1)),
+              reviewCount: reviews.length,
             },
           }
-        : {}),
+        : food.rating > 0
+          ? {
+              aggregateRating: {
+                "@type": "AggregateRating",
+                ratingValue: food.rating,
+                reviewCount: food.reviews,
+              },
+            }
+          : {}),
       offers: {
         "@type": "Offer",
         price: food.price,
@@ -174,8 +187,14 @@ export default async function ProductPage({ params }: Props) {
         <p className="text-text-light leading-relaxed text-sm">{food.description}</p>
         <div className="mt-3 text-sm font-semibold text-[#ffa502]">
           <i className="fa-solid fa-star mr-1" aria-hidden />
-          {food.rating}{" "}
-          <span className="text-text-light font-normal">({food.reviews}+ reviews)</span>
+          {realRating.toFixed(1)}{" "}
+          <span className="text-text-light font-normal">
+            (
+            {reviews.length > 0
+              ? `${reviews.length} review${reviews.length === 1 ? "" : "s"}`
+              : `${food.reviews}+ reviews`}
+            )
+          </span>
         </div>
       </section>
 
@@ -220,26 +239,7 @@ export default async function ProductPage({ params }: Props) {
       )}
 
       {/* Reviews */}
-      <section className="p-5 border-b border-line">
-        <div className="flex justify-between items-center mb-4">
-          <h2 className="text-lg font-bold">Reviews</h2>
-          <span className="text-sm font-bold text-[#ffa502] flex items-center gap-1">
-            <i className="fa-solid fa-star fill-current" aria-hidden /> {food.rating} (
-            {food.reviews})
-          </span>
-        </div>
-        <div className="space-y-3">
-          {reviews.map((review) => (
-            <div key={review.author} className="bg-background p-3 rounded-lg">
-              <div className="flex items-center gap-2 mb-1">
-                <div className="w-6 h-6 bg-gray-300 rounded-full" />
-                <span className="text-sm font-semibold text-text-dark">{review.author}</span>
-              </div>
-              <p className="text-sm text-text-light">{review.text}</p>
-            </div>
-          ))}
-        </div>
-      </section>
+      <ReviewSection foodId={food.id} initialReviews={reviews} />
 
       {/* Also ate together with */}
       <section className="p-5 pb-32">

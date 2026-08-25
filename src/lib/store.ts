@@ -1,5 +1,7 @@
 "use client";
 
+import { syncUserField } from "./userState";
+
 const LIKED_KEY = "cravely:liked";
 const PACKAGE_KEY = "cravely:package";
 
@@ -28,6 +30,7 @@ export function toggleLiked(id: string): boolean {
     ? current.filter((x) => x !== id)
     : [...current, id];
   write(LIKED_KEY, next);
+  syncUserField("liked", next);
   return next.includes(id);
 }
 

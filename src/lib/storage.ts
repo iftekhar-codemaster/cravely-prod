@@ -2,7 +2,7 @@
 
 import { getFirebaseAuth } from "./firebase";
 
-export type UploadKind = "food" | "story" | "logo" | "cover";
+export type UploadKind = "food" | "story" | "logo" | "cover" | "offer";
 
 /**
  * Compresses an image in-browser (max 1200px, JPEG ~82%) and uploads it to

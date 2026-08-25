@@ -57,6 +57,22 @@ service cloud.firestore {
       allow write: if isAdmin();
     }
 
+    // Reviews — public read; authors write only their own, one rating 1-5.
+    match /reviews/{id} {
+      allow read: if true;
+      allow create: if signedIn()
+        && request.resource.data.authorId == request.auth.uid
+        && request.resource.data.foodId is string
+        && request.resource.data.foodId.size() > 0
+        && request.resource.data.rating is int
+        && request.resource.data.rating >= 1
+        && request.resource.data.rating <= 5
+        && request.resource.data.text is string
+        && request.resource.data.text.size() <= 1000;
+      allow update, delete: if isAdmin()
+        || (signedIn() && resource.data.authorId == request.auth.uid);
+    }
+
     // User profiles — self-create/read; role changes only via super admin.
     // The reserved owner email always escalates to super_admin.
     function isOwnerEmail() {

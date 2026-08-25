@@ -50,7 +50,15 @@ export type Story = {
   createdAt?: unknown;
 };
 
-export type Offer = { title: string; code: string; bg: string; image: string };
+export type Offer = {
+  title: string;
+  code: string;
+  bg: string;
+  image: string;
+  restaurantId?: string;
+  expiresAt?: string;
+  active?: boolean;
+};
 
 const img = (seed: string, w: number, h: number) =>
   `https://loremflickr.com/${w}/${h}/${seed}`;
@@ -383,12 +391,15 @@ export const offers: Offer[] = [
     code: "CRAVELY50",
     bg: "rgba(0,0,0,0.5)",
     image: "https://loremflickr.com/400/200/biryani?lock=100",
+    restaurantId: "kacchi-bhai",
+    expiresAt: "2026-01-31T23:59:59.000Z",
   },
   {
     title: "Free Delivery",
     code: "On orders over ৳500",
     bg: "rgba(220, 39, 67, 0.7)",
     image: "https://loremflickr.com/400/200/delivery?lock=101",
+    expiresAt: "2027-12-31T23:59:59.000Z",
   },
   {
     title: "Buy 1 Get 1 Pizza",
@@ -413,10 +424,4 @@ export const cuisines: string[] = [
   "Chicken",
 ];
 
-export const reviewPool: Record<string, Review[]> = {
-  default: [
-    { author: "Alex M.", text: "Absolutely amazing! Portions are generous." },
-    { author: "Sarah K.", text: "Best in town. Highly recommended." },
-    { author: "Rafi H.", text: "Good taste, delivery was quick too." },
-  ],
-};
+
