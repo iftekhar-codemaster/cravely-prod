@@ -151,6 +151,7 @@ export function useNotifications() {
   return {
     notifications,
     unreadCount,
+    readAtMs,
     markAllRead,
     loading: rows === null,
   };

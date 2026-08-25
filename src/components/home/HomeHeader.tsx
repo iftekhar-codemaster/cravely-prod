@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
+import NotificationsBell from "@/components/NotificationsBell";
 
 const LINES = [
   "Hunger is a compass.",
@@ -43,6 +44,7 @@ export default function HomeHeader({
         <span className="text-lg font-extrabold leading-none">
           <span className="text-primary">Crave</span>ly
         </span>
+        <NotificationsBell />
       </div>
       <div className="flex items-center justify-between gap-3">
         {/* Location chip */}
