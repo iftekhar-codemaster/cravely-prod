@@ -6,6 +6,7 @@ import type { Food, Restaurant } from "@/lib/data";
 import { recommendDishes } from "@/lib/recommend";
 import { collectSignals, isGeoOptedIn, setGeoOptedIn } from "@/lib/track";
 import { getLiked } from "@/lib/store";
+import { useUserLocation } from "@/lib/useUserLocation";
 
 export default function ForYou({
   foods,
@@ -17,6 +18,10 @@ export default function ForYou({
   const [recs, setRecs] = useState<ReturnType<typeof recommendDishes> | null>(null);
   const [geo, setGeo] = useState(false);
   const [tick, setTick] = useState(0); // recompute when signals change
+  const [manualLoc, setManualLoc] = useState<{ lat: number; lng: number } | null>(
+    null,
+  );
+  const userLoc = useUserLocation();
 
   useEffect(() => {
     const t = setTimeout(() => {
@@ -29,11 +34,12 @@ export default function ForYou({
           loved: signals.loved,
           views: signals.views,
           geoOptIn: signals.geo,
+          origin: userLoc ?? manualLoc,
         }),
       );
     }, 0);
     return () => clearTimeout(t);
-  }, [tick, foods, restaurants]);
+  }, [tick, foods, restaurants, userLoc, manualLoc]);
 
   async function enableLocation() {
     setGeoOptedin_safe(true);
@@ -47,7 +53,10 @@ export default function ForYou({
     try {
       if (navigator.geolocation) {
         navigator.geolocation.getCurrentPosition(
-          () => setGeoOptedIn(true),
+          (pos) => {
+            setManualLoc({ lat: pos.coords.latitude, lng: pos.coords.longitude });
+            setGeoOptedIn(true);
+          },
           () => setGeoOptedIn(false),
           { timeout: 4000 },
         );

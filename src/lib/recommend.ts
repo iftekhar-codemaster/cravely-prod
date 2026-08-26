@@ -1,4 +1,5 @@
 import type { Food, Restaurant } from "./data";
+import { haversineKm } from "./geo";
 
 // Cravely recommendation engine.
 //
@@ -20,6 +21,8 @@ export type ScoreInput = {
   loved: string[];
   views: Record<string, number>;
   geoOptIn: boolean;
+  /** The current user's real device location — proximity uses this, not seed data. */
+  origin?: { lat: number; lng: number } | null;
 };
 
 function logScale(n: number, max: number): number {
@@ -32,6 +35,7 @@ export function recommendDishes({
   loved,
   views,
   geoOptIn,
+  origin,
 }: ScoreInput): Recommendation[] {
   const restaurantById = new Map(restaurants.map((r) => [r.id, r]));
   const lovedSet = new Set(loved);
@@ -74,12 +78,18 @@ export function recommendDishes({
     const social = food.rating * 1.1 + logScale(food.reviews, maxReviews) * 0.9;
     score += social;
 
-    // Proximity (convenience)
+    // Proximity (convenience) — real distance from the user's device when
+    // available; seeded distance only as a last-resort fallback.
     const r = restaurantById.get(food.restaurantId);
-    const dist = Math.min(r?.distanceKm ?? 5, 10);
+    const dist = Math.min(
+      origin && r?.lat != null && r?.lng != null
+        ? haversineKm(origin.lat, origin.lng, r.lat, r.lng)
+        : (r?.distanceKm ?? 5),
+      10,
+    );
     const proximity = ((10 - dist) / 10) * (geoOptIn ? 3 : 1.6);
     score += proximity;
-    if (geoOptIn && dist <= 2.5) reasons.push("Very close to you");
+    if (geoOptIn && origin && dist <= 2.5) reasons.push("Very close to you");
 
     // Familiarity (mere-exposure effect)
     const cat = categoryAffinity.get(food.category) ?? 0;
