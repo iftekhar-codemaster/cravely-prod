@@ -55,7 +55,6 @@ export default function PackageBuilder() {
 
   function remove(id: string) {
     addToPackage(id); // toggles off since it's in the package
-    setSelected((s) => s.filter((x) => x !== id));
     setResults(null);
   }
 
@@ -344,10 +343,9 @@ export default function PackageBuilder() {
               <button
                 key={food.id}
                 onClick={() => {
+                  // store event sync updates `selected` — no manual setState
+                  // (double-updating here used to duplicate chips)
                   addToPackage(food.id);
-                  setSelected((s) =>
-                    on ? s.filter((x) => x !== food.id) : [...s, food.id],
-                  );
                   setResults(null);
                 }}
                 className={`pressable text-xs px-3 py-2 rounded-full border transition-colors ${

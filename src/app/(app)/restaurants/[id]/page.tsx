@@ -125,24 +125,36 @@ export default async function RestaurantDetailPage({ params }: Props) {
 
   return (
     <div className="relative pb-6">
-      <CloseButton />
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
 
-      {/* Hero */}
-      <div className="relative h-48 bg-gray-200 anim-fade-up">
-        <SmartImg
-          src={restaurant.image}
-          alt={restaurant.name}
-          eager
-          className="w-full h-full"
-          imgClassName="w-full h-full object-cover"
-        />
-        <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent" />
-        <div className="absolute bottom-3 left-4 right-4 text-white">
-          <h1 className="text-2xl font-extrabold drop-shadow-lg flex items-center gap-2">
+      {/* Hero: cover on top, logo overlapping, name below */}
+      <div className="anim-fade-up">
+        <div className="relative h-44 bg-gray-200">
+          <SmartImg
+            src={restaurant.cover || restaurant.image}
+            alt={restaurant.name}
+            eager
+            className="w-full h-full"
+            imgClassName="w-full h-full object-cover"
+          />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent" />
+          <CloseButton />
+        </div>
+
+        <div className="px-5">
+          <div className="-mt-10 mb-3">
+            <SmartImg
+              src={restaurant.logo}
+              alt={`${restaurant.name} logo`}
+              eager
+              className="w-20 h-20 rounded-2xl ring-4 ring-white bg-white shadow-lg"
+              imgClassName="w-full h-full object-cover rounded-2xl"
+            />
+          </div>
+          <h1 className="text-2xl font-extrabold flex items-center gap-2">
             {restaurant.name}
             {restaurant.verified && (
               <i
@@ -154,17 +166,6 @@ export default async function RestaurantDetailPage({ params }: Props) {
           </h1>
         </div>
       </div>
-
-      {restaurant.cover && (
-        <div className="px-5 pt-4 anim-fade-up">
-          <SmartImg
-            src={restaurant.cover}
-            alt={`${restaurant.name} cover`}
-            className="h-28 rounded-xl overflow-hidden w-full"
-            imgClassName="w-full h-full object-cover"
-          />
-        </div>
-      )}
 
       <section
         className="p-5 border-b border-line anim-fade-up"

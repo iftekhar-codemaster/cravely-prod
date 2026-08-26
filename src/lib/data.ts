@@ -237,11 +237,35 @@ export async function submitReview(input: {
       rating: Number(avg.toFixed(1)),
       reviews: count,
     });
+    await recomputeRestaurantRating(db, input.restaurantId ?? (await getFood(input.foodId))?.restaurantId);
   } catch (err) {
     console.warn("[cravely] review aggregate update failed:", err);
   }
 
   return ref.id;
+}
+
+/** Restaurant rating = average of its dishes' live ratings (dishes with ≥1 review). */
+async function recomputeRestaurantRating(
+  db: ReturnType<typeof getDb> & NonNullable<ReturnType<typeof getDb>>,
+  restaurantId?: string,
+): Promise<void> {
+  if (!restaurantId) return;
+  const foodsSnap = await getDocs(
+    query(collection(db, "foods"), where("restaurantId", "==", restaurantId)),
+  );
+  const rated = foodsSnap.docs
+    .map((d) => d.data() as { rating?: number; reviews?: number })
+    .filter((f) => (f.reviews ?? 0) > 0 && (f.rating ?? 0) > 0);
+  const avg =
+    rated.length > 0
+      ? rated.reduce((s, f) => s + (f.rating ?? 0), 0) / rated.length
+      : 0;
+  const reviews = rated.reduce((s, f) => s + (f.reviews ?? 0), 0);
+  await updateDoc(doc(db, "restaurants", restaurantId), {
+    rating: Number(avg.toFixed(1)),
+    reviews,
+  });
 }
 
 /**

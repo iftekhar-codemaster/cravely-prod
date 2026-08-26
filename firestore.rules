@@ -28,7 +28,17 @@ service cloud.firestore {
     match /restaurants/{id} {
       allow read: if true;
       allow create: if isAdmin();
-      allow update: if isAdmin() || ownsRestaurant(id);
+      allow update: if isAdmin()
+        || ownsRestaurant(id)
+        // review aggregate write-back: signed-in users may touch ONLY these
+        || (signedIn()
+            && request.resource.data.diff(resource.data).affectedKeys()
+                 .hasOnly(['rating', 'reviews'])
+            && request.resource.data.rating is number
+            && request.resource.data.rating >= 0
+            && request.resource.data.rating <= 5
+            && request.resource.data.reviews is int
+            && request.resource.data.reviews >= 0);
       allow delete: if isSuperAdmin();
     }
     match /foods/{id} {
