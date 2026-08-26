@@ -101,6 +101,13 @@ service cloud.firestore {
       allow get, list: if signedIn() && (request.auth.uid == uid || isAdmin());
       allow create: if signedIn() && request.auth.uid == uid
         && (request.resource.data.role == 'user' || isOwnerEmail());
+      // Self-service fields (read markers, personalization, location) —
+      // works regardless of the doc's original field shape.
+      allow update: if signedIn()
+        && request.auth.uid == uid
+        && request.resource.data.diff(resource.data).affectedKeys()
+             .hasOnly(['notificationsReadAt', 'liked', 'views', 'geoOptIn',
+                       'locationLat', 'locationLng']);
       allow update: if signedIn() && (
         (request.auth.uid == uid
           && request.resource.data.role == resource.data.role
