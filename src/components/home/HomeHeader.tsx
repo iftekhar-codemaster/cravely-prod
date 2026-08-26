@@ -31,7 +31,7 @@ export default function HomeHeader({
   const hour = now.getHours();
 
   return (
-    <div className="anim-fade-up">
+    <div className="anim-fade-up relative z-10">
       <div className="flex items-center gap-2 mb-3">
         <Image
           src="/icon-192.png"
