@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import CloseButton from "@/components/CloseButton";
 import SmartImg from "@/components/SmartImg";
 import FoodCard from "@/components/FoodCard";
+import RestaurantDistance from "@/components/RestaurantDistance";
 import {
   getRestaurant,
   getFoodsByRestaurant,
@@ -183,10 +184,7 @@ export default async function RestaurantDetailPage({ params }: Props) {
             {restaurant.rating}
           </span>
           <span className="text-text-light">({restaurant.reviews}+ reviews)</span>
-          <span className="text-text-light">
-            <i className="fa-solid fa-location-dot mr-1" aria-hidden />
-            {restaurant.distanceKm} km
-          </span>
+          <RestaurantDistance lat={restaurant.lat} lng={restaurant.lng} />
           <span className="text-text-light">Open until {restaurant.openUntil}</span>
           {isOpenNow(restaurant.openFrom, restaurant.openUntil) === true && (
             <span className="inline-flex items-center gap-1 rounded-xl bg-card border border-line px-2 py-0.5 text-xs font-semibold text-green-600">
