@@ -156,6 +156,16 @@ service cloud.firestore {
       allow write: if isSuperAdmin();
     }
 
+    // FCM push tokens — device registry. Clients write their own token;
+    // only the backend (Admin SDK, bypasses rules) reads them.
+    match /fcmTokens/{tokenId} {
+      allow create, update: if signedIn()
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.token is string;
+      allow delete: if signedIn() && resource.data.uid == request.auth.uid;
+      allow read: if false;
+    }
+
     // Restaurant applications — anyone authenticated can apply,
     // admins review. Applicants can read their own application.
     match /applications/{id} {

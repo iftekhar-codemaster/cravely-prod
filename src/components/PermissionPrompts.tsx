@@ -40,6 +40,10 @@ export default function PermissionPrompts() {
       if ("Notification" in window && Notification.permission === "default") {
         await Notification.requestPermission();
       }
+      if ("Notification" in window && Notification.permission === "granted") {
+        const { enablePush } = await import("@/lib/push");
+        await enablePush();
+      }
     } catch {
       // unsupported — ignore
     }

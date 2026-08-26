@@ -64,6 +64,25 @@ export async function sendNotification(
     createdBy: getFirebaseAuth()?.currentUser?.uid ?? "",
     createdAt: serverTimestamp(),
   });
+
+  // Fire-and-forget: push the notification to devices via /api/push.
+  void (async () => {
+    try {
+      const token = await getFirebaseAuth()?.currentUser?.getIdToken();
+      if (!token) return;
+      await fetch("/api/push", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ notificationId: ref.id }),
+      });
+    } catch (err) {
+      console.warn("[cravely] push send failed:", err);
+    }
+  })();
+
   return ref.id;
 }
 
