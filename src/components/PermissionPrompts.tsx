@@ -5,7 +5,7 @@ import { useAuth } from "@/components/AuthProvider";
 
 const ASKED_KEY = "cravely:permsAsked";
 
-type Step = "ask" | "location" | "notifications" | "done" | null;
+type Step = "ask" | "location" | "notifications" | "confirm" | "done" | null;
 
 /** One-time friendly permission ask for new signed-in users. */
 export default function PermissionPrompts() {
@@ -65,7 +65,43 @@ export default function PermissionPrompts() {
     <div className="fixed inset-0 z-[70] bg-black/40 flex items-end justify-center">
       <div className="anim-fade-up w-full max-w-md bg-white rounded-t-3xl p-6 pb-8">
         <div className="w-10 h-1 rounded-full bg-line mx-auto mb-4" />
-        {step === "done" ? (
+        {step === "confirm" ? (
+          <>
+            <div className="mx-auto w-12 h-12 rounded-2xl bg-amber-100 text-amber-600 flex items-center justify-center text-xl mb-3">
+              <i className="fa-solid fa-triangle-exclamation" aria-hidden />
+            </div>
+            <h2 className="text-lg font-extrabold text-center">Are you sure?</h2>
+            <p className="text-sm text-text-light mt-2 text-center leading-relaxed">
+              These permissions power Cravely&apos;s main purpose:
+            </p>
+            <div className="space-y-2 mt-4">
+              <div className="flex items-center gap-3 rounded-xl bg-background border border-line px-4 py-2.5">
+                <i className="fa-solid fa-location-dot text-primary w-5 text-center" aria-hidden />
+                <span className="text-[13px]">
+                  <b>Nearby restaurants</b> — real distances from you
+                </span>
+              </div>
+              <div className="flex items-center gap-3 rounded-xl bg-background border border-line px-4 py-2.5">
+                <i className="fa-solid fa-bell text-primary w-5 text-center" aria-hidden />
+                <span className="text-[13px]">
+                  <b>Offer alerts</b> — deals from kitchens near you
+                </span>
+              </div>
+            </div>
+            <button
+              onClick={() => void enable()}
+              className="pressable w-full bg-primary text-white py-3 rounded-full font-semibold mt-5 shadow-md"
+            >
+              Enable permissions
+            </button>
+            <button
+              onClick={dismiss}
+              className="w-full text-center text-xs text-text-light hover:text-primary transition-colors mt-3"
+            >
+              Skip anyway — I understand
+            </button>
+          </>
+        ) : step === "done" ? (
           <div className="text-center py-4">
             <div className="mx-auto w-12 h-12 rounded-2xl bg-green-100 text-green-600 flex items-center justify-center text-xl mb-3">
               <i className="fa-solid fa-check" aria-hidden />
@@ -124,7 +160,7 @@ export default function PermissionPrompts() {
               Enable
             </button>
             <button
-              onClick={dismiss}
+              onClick={() => setStep("confirm")}
               className="w-full text-center text-xs text-text-light hover:text-primary transition-colors mt-3"
             >
               Maybe later
