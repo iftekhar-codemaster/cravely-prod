@@ -5,7 +5,10 @@ import { useEffect, useRef, useState } from "react";
 /**
  * Image with built-in shimmer preloader: gray shimmer block until the image
  * finishes loading, then a quick fade/scale-in. Prevents the "popping" feel.
- * Retries once on failure (transient CDN rate limits).
+ * Handles the missed-onLoad race: on a full page load the browser can finish
+ * fetching before React hydrates, so the load event fires before any handler
+ * exists — we check `complete` on mount and sync state. Retries once on
+ * failure (transient CDN rate limits).
  */
 export default function SmartImg({
   src,
@@ -25,6 +28,7 @@ export default function SmartImg({
   const [attempt, setAttempt] = useState(0);
   const [prevSrc, setPrevSrc] = useState(src);
   const retryTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const imgRef = useRef<HTMLImageElement>(null);
 
   // Reset load state when the src changes (React-recommended render-time reset)
   if (prevSrc !== src) {
@@ -33,6 +37,15 @@ export default function SmartImg({
     setFailed(false);
     setAttempt(0);
   }
+
+  // Catch images that finished loading before hydration attached handlers
+  useEffect(() => {
+    const img = imgRef.current;
+    if (img && img.complete) {
+      if (img.naturalWidth > 0) setLoaded(true);
+      else setFailed(true);
+    }
+  }, []);
 
   useEffect(() => {
     if (!failed || attempt >= 2) return;
@@ -53,6 +66,7 @@ export default function SmartImg({
       {!loaded && !failed && <span className="absolute inset-0 skel" aria-hidden />}
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
+        ref={imgRef}
         key={attempt}
         src={src}
         alt={alt}
