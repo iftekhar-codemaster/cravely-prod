@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useUserLocation } from "@/lib/useUserLocation";
+import { TILE_URL, TILE_ATTRIBUTION } from "@/lib/mapTiles";
 import { haversineKm } from "@/lib/geo";
 
 /**
@@ -47,9 +48,8 @@ export default function LocationMap({
         scrollWheelZoom: false,
         attributionControl: true,
       });
-      L.tileLayer("https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png", {
-        attribution:
-          '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/">CARTO</a>',
+      L.tileLayer(TILE_URL, {
+        attribution: TILE_ATTRIBUTION,
       }).addTo(map);
       L.marker([lat!, lng!], {
         icon: L.divIcon({

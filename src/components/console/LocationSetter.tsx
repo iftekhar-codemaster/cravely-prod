@@ -5,6 +5,7 @@ import { doc, updateDoc } from "firebase/firestore";
 import type { Map as LeafletMap, Marker, LeafletMouseEvent } from "leaflet";
 import { audit } from "@/lib/audit";
 import { getDb } from "@/lib/firebase";
+import { TILE_URL, TILE_ATTRIBUTION } from "@/lib/mapTiles";
 
 type Props = {
   restaurantId: string;
@@ -132,8 +133,8 @@ function MapModal({
         initialLat != null && initialLng != null ? [initialLat, initialLng] : [26.0333, 88.4667];
 
       const map = L.map(containerRef.current).setView(center, 13);
-      L.tileLayer("https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png", {
-        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/">CARTO</a>',
+      L.tileLayer(TILE_URL, {
+        attribution: TILE_ATTRIBUTION,
       }).addTo(map);
 
       const icon = L.divIcon({
