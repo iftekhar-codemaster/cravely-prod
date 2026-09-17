@@ -10,7 +10,7 @@
 
 - npm only (package-lock.json is committed; no lockfile for other package managers).
 - Dev: `npm run dev`. Verify changes with `npm run lint` and `npm run build` (there is no test suite).
-- Seed Firestore from `src/lib/mock-data.ts`: `npm run seed`. Idempotent — overwrites by fixed doc ids.
+- Seed Firestore from `src/lib/mock-data.ts`: `npm run seed`. Idempotent — overwrites by fixed doc ids. Requires `ADMIN_PASSWORD` (or `FIREBASE_SERVICE_ACCOUNT_B64`) in `.env` to authenticate against Firestore security rules.
 - Create super-admin account: `npm run bootstrap:admin`.
 - Verify R2 uploads: `npm run upload:healthcheck`.
 

@@ -95,7 +95,8 @@ service cloud.firestore {
     // User profiles — self-create/read; role changes only via super admin.
     // The reserved owner email always escalates to super_admin.
     function isOwnerEmail() {
-      return request.auth.token.email.lower() == 'itx.iftekhars@gmail.com';
+      return request.auth.token.email != null
+        && request.auth.token.email.lower() == 'itx.iftekhars@gmail.com';
     }
     match /users/{uid} {
       allow get, list: if signedIn() && (request.auth.uid == uid || isAdmin());
@@ -122,12 +123,11 @@ service cloud.firestore {
       allow delete: if false;
     }
 
-    // Admin security config (passkeys + IP allowlist) — own doc; owner sees all
+    // Admin security config (passkeys + IP allowlist) — own doc for admins; super admin manages all
     match /adminSecurity/{uid} {
-      allow read, write: if signedIn(); // TEMP: IP allowlist update
-    }
-    match /users/{uid} {
-      allow read: if signedIn(); // TEMP: find owner uid
+      allow read, write: if signedIn() && (
+        (request.auth.uid == uid && isAdmin()) || isSuperAdmin()
+      );
     }
 
     // Upload rate-limit counters — per-user docs + a global daily counter.
