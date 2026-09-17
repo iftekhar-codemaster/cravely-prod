@@ -17,11 +17,11 @@ type SortKey = (typeof sortOptions)[number]["key"];
 function distanceOf(
   r: Restaurant,
   userLoc: { lat: number; lng: number } | null,
-): number {
+): number | null {
   if (userLoc && r.lat != null && r.lng != null) {
     return haversineKm(userLoc.lat, userLoc.lng, r.lat, r.lng);
   }
-  return r.distanceKm;
+  return r.distanceKm && r.distanceKm > 0 ? r.distanceKm : null;
 }
 
 export default function RestaurantList({
@@ -36,14 +36,18 @@ export default function RestaurantList({
   const list = useMemo(() => {
     return restaurants
       .map((r) => ({ r, km: distanceOf(r, userLoc) }))
-      .filter(({ km }) => km <= maxKm)
-      .sort((a, b) =>
-        sort === "distance"
-          ? a.km - b.km
-          : sort === "rating"
-            ? b.r.rating - a.r.rating
-            : b.r.reviews - a.r.reviews,
-      );
+      .filter(({ km }) => (km != null ? km <= maxKm : true))
+      .sort((a, b) => {
+        if (sort === "distance") {
+          if (a.km != null && b.km != null) return a.km - b.km;
+          if (a.km != null) return -1;
+          if (b.km != null) return 1;
+          return b.r.rating - a.r.rating;
+        }
+        return sort === "rating"
+          ? b.r.rating - a.r.rating
+          : b.r.reviews - a.r.reviews;
+      });
   }, [restaurants, sort, maxKm, userLoc]);
 
   return (
@@ -84,7 +88,7 @@ export default function RestaurantList({
 
       <div className="space-y-3 pb-4">
         {list.map(({ r, km }) => (
-          <RestaurantCard key={r.id} restaurant={r} distanceKm={userLoc ? km : undefined} />
+          <RestaurantCard key={r.id} restaurant={r} distanceKm={userLoc && km != null ? km : undefined} />
         ))}
         {list.length === 0 && (
           <p className="text-sm text-text-light text-center py-8">

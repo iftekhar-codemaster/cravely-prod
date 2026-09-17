@@ -161,13 +161,19 @@ export default async function ProductPage({ params }: Props) {
       <section className="p-5 flex items-center gap-4 border-b border-line anim-fade-up" style={{ animationDelay: "80ms" }}>
         {restaurant && (
           <>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={restaurant.logo}
-              alt=""
-              loading="lazy"
-              className="w-16 h-16 rounded-xl flex-shrink-0 object-cover border border-gray-300"
-            />
+            {restaurant.logo || restaurant.image ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={restaurant.logo || restaurant.image}
+                alt={restaurant.name}
+                loading="lazy"
+                className="w-16 h-16 rounded-xl flex-shrink-0 object-cover border border-gray-300 bg-gray-100"
+              />
+            ) : (
+              <div className="w-16 h-16 rounded-xl flex-shrink-0 border border-gray-300 bg-gray-100 flex items-center justify-center text-text-light text-xl">
+                <i className="fa-solid fa-store" aria-hidden />
+              </div>
+            )}
             <div className="flex flex-col min-w-0">
               <Link
                 href={`/restaurants/${restaurant.id}`}

@@ -13,6 +13,7 @@ import {
 import { getPackage, addToPackage } from "@/lib/store";
 import { useUserLocation } from "@/lib/useUserLocation";
 import SmartImg from "@/components/SmartImg";
+import RestaurantDistance from "@/components/RestaurantDistance";
 
 export default function PackageBuilder() {
   const [allFoods, setAllFoods] = useState<Food[] | null>(null);
@@ -183,7 +184,10 @@ export default function PackageBuilder() {
             min={1}
             max={10}
             value={radiusKm}
-            onChange={(e) => setRadiusKm(Number(e.target.value))}
+            onChange={(e) => {
+              setRadiusKm(Number(e.target.value));
+              setResults(null);
+            }}
             disabled={selectedFoods.length === 0}
             className="w-full accent-primary"
             aria-label="Search radius in kilometers"
@@ -268,19 +272,47 @@ export default function PackageBuilder() {
 
                   <div className="p-4">
                     <div className="flex justify-between items-start gap-3">
-                      <div className="min-w-0">
+                      <div className="flex items-center gap-3 min-w-0">
                         <Link
                           href={`/restaurants/${result.restaurant.id}`}
-                          className="font-bold text-sm truncate hover:text-primary"
+                          className="flex-shrink-0"
                         >
-                          {result.restaurant.name}
-                          {result.restaurant.verified && (
-                            <i className="fa-solid fa-circle-check text-primary text-xs ml-1.5" title="Verified" aria-label="Verified" />
-                          )}
+                          <SmartImg
+                            src={result.restaurant.logo || result.restaurant.image}
+                            alt={result.restaurant.name}
+                            className="w-10 h-10 rounded-lg overflow-hidden border border-line bg-gray-100"
+                            imgClassName="w-full h-full object-cover"
+                          />
                         </Link>
-                        <p className="text-xs text-text-light mt-0.5">
-                          {result.restaurant.distanceKm} km · ⭐ {result.restaurant.rating}
-                        </p>
+                        <div className="min-w-0">
+                          <Link
+                            href={`/restaurants/${result.restaurant.id}`}
+                            className="font-bold text-sm truncate hover:text-primary block"
+                          >
+                            {result.restaurant.name}
+                            {result.restaurant.verified && (
+                              <i className="fa-solid fa-circle-check text-primary text-xs ml-1.5" title="Verified" aria-label="Verified" />
+                            )}
+                          </Link>
+                          <p className="text-xs text-text-light mt-0.5 flex items-center gap-1.5">
+                            <RestaurantDistance
+                              lat={result.restaurant.lat}
+                              lng={result.restaurant.lng}
+                              fallbackKm={
+                                result.distanceKm ??
+                                (result.restaurant.distanceKm && result.restaurant.distanceKm > 0
+                                  ? result.restaurant.distanceKm
+                                  : undefined)
+                              }
+                              showIcon={false}
+                            />
+                            <span>·</span>
+                            <span className="text-[#ffa502]">
+                              <i className="fa-solid fa-star text-[10px] mr-1" aria-hidden />
+                              {result.restaurant.rating}
+                            </span>
+                          </p>
+                        </div>
                       </div>
                       <div className="text-right flex-shrink-0">
                         <div className={`font-extrabold text-xl ${i === 0 ? "text-primary" : ""}`}>

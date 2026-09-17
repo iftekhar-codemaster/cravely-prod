@@ -43,6 +43,7 @@ export type PackageResult = {
   restaurant: Restaurant;
   total: number;
   items: { food: Food; price: number }[];
+  distanceKm?: number;
 };
 
 const CACHE_TTL = 60_000;
@@ -289,8 +290,11 @@ export async function buildPackages(
     const km =
       origin && restaurant.lat != null && restaurant.lng != null
         ? haversineKm(origin.lat, origin.lng, restaurant.lat, restaurant.lng)
-        : restaurant.distanceKm;
-    if (km > radiusKm) continue;
+        : (restaurant.distanceKm && restaurant.distanceKm > 0
+            ? restaurant.distanceKm
+            : undefined);
+
+    if (km != null && km > radiusKm) continue;
 
     // Match by dish NAME so multiple restaurants can fulfill the same bundle.
     const wantedNames = dishIds
@@ -315,10 +319,16 @@ export async function buildPackages(
       items.push({ food: match, price: match.price });
     }
     if (!hasAll) continue;
+
+    const formattedKm = km != null ? Number(km.toFixed(1)) : undefined;
     results.push({
-      restaurant,
+      restaurant: {
+        ...restaurant,
+        ...(formattedKm != null ? { distanceKm: formattedKm } : {}),
+      },
       total: items.reduce((sum, i) => sum + i.price, 0),
       items,
+      distanceKm: formattedKm,
     });
   }
 

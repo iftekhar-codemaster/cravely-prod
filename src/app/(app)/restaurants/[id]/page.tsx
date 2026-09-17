@@ -148,7 +148,7 @@ export default async function RestaurantDetailPage({ params }: Props) {
         <div className="px-5">
           <div className="-mt-10 mb-3">
             <SmartImg
-              src={restaurant.logo}
+              src={restaurant.logo || restaurant.image}
               alt={`${restaurant.name} logo`}
               eager
               className="w-20 h-20 rounded-2xl ring-4 ring-white bg-white shadow-lg"

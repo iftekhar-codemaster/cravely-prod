@@ -145,7 +145,7 @@ export default function BottomNav() {
     {
       key: "package",
       icon: inPack ? "fa-solid fa-circle-check" : "fa-solid fa-circle-plus",
-      label: inPack ? "Added" : "Add to plan",
+      label: inPack ? "Added" : "Add",
       onClick: togglePack,
       active: inPack,
     },
