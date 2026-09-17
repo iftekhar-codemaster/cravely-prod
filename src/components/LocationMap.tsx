@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useUserLocation } from "@/lib/useUserLocation";
-import { TILE_URL, TILE_ATTRIBUTION } from "@/lib/mapTiles";
+import { TILE_URL, TILE_LAYER_OPTIONS } from "@/lib/mapTiles";
 import { haversineKm } from "@/lib/geo";
 
 /**
@@ -48,9 +48,7 @@ export default function LocationMap({
         scrollWheelZoom: false,
         attributionControl: true,
       });
-      L.tileLayer(TILE_URL, {
-        attribution: TILE_ATTRIBUTION,
-      }).addTo(map);
+      L.tileLayer(TILE_URL, TILE_LAYER_OPTIONS).addTo(map);
       L.marker([lat!, lng!], {
         icon: L.divIcon({
           html: '<div style="font-size:30px">📍</div>',

@@ -13,6 +13,7 @@ import {
   notificationCreatedAtMs,
   useNotifications,
 } from "@/lib/notifications";
+import { APP_VERSION } from "@/lib/site";
 
 const ROLE_STYLES = {
   user: "bg-blue-50 text-blue-600",
@@ -128,6 +129,10 @@ export default function ProfilePage() {
           <QuietRow href="/packages" icon="fa-box-open" title="Package Builder" desc="Compare bundle prices nearby" />
           <QuietRow href="/liked" icon="fa-heart" title="Liked dishes" desc="Your shortlist" />
         </div>
+
+        <p className="text-center text-[10px] text-text-light pt-6 font-mono">
+          Cravely · Thakurgaon · {APP_VERSION}
+        </p>
       </div>
     );
   }
@@ -285,8 +290,8 @@ export default function ProfilePage() {
           <SignOutRow onSignOut={() => void signOut().then(() => router.refresh())} />
         </Group>
 
-        <p className="text-center text-[10px] text-text-light pt-2">
-          Cravely · Thakurgaon {memberSince ? `· with you since ${memberSince}` : ""}
+        <p className="text-center text-[10px] text-text-light pt-2 font-mono">
+          Cravely · Thakurgaon {memberSince ? `· with you since ${memberSince}` : ""} · {APP_VERSION}
         </p>
       </div>
     </div>

@@ -3,7 +3,7 @@ import Image from "next/image";
 import type { Metadata } from "next";
 import AuthedRedirect from "@/components/marketing/AuthedRedirect";
 import InstallNowButton from "@/components/marketing/InstallNowButton";
-import { LANDING_URL } from "@/lib/site";
+import { LANDING_URL, APP_VERSION } from "@/lib/site";
 
 export const metadata: Metadata = {
   title: "Cravely",
@@ -63,6 +63,9 @@ export default function MarketingLayout({
             />
             <span>
               © {new Date().getFullYear()} Cravely — Thakurgaon
+            </span>
+            <span className="text-[11px] font-mono text-text-light/60">
+              {APP_VERSION}
             </span>
           </div>
           <div className="flex items-center gap-5">

@@ -12,17 +12,20 @@
 - Dev: `npm run dev`. Verify changes with `npm run lint` and `npm run build` (there is no test suite).
 - Seed Firestore from `src/lib/mock-data.ts`: `npm run seed`. Idempotent — overwrites by fixed doc ids.
 - Create super-admin account: `npm run bootstrap:admin`.
+- Verify R2 uploads: `npm run upload:healthcheck`.
 
-Both scripts run plain Node directly on `.ts` files (`node --env-file-if-exists=.env.local scripts/*.ts`) — requires a Node version with native TS type-stripping support. They read `.env.local`, not `.env`. `tsconfig.json` excludes `scripts/`, so typecheck/lint don't cover them.
+Scripts run plain Node directly on `.ts` files (`node --env-file-if-exists=.env --env-file-if-exists=.env.local scripts/*.ts`) — requires a Node version with native TS type-stripping support. They read `.env` and/or `.env.local`. `tsconfig.json` excludes `scripts/`, so typecheck/lint don't cover them.
 
 ## Architecture
 
 - `src/lib/data.ts` reads live Firestore collections seeded by `npm run seed`; `src/lib/mock-data.ts` is the source dataset.
 - Access control lives in `firestore.rules`: roles on each user doc are `super_admin`, `admin` (platform staff), `restaurant` (scoped to own `restaurantId`). Client mirrors this in `src/lib/user.ts` / `src/lib/adminSecurity.ts` (admin passkeys, IP allowlist enforcement toggle).
-- Routes: two hosts, one deployment, split by `src/proxy.ts` (Next 16 proxy convention, not middleware.ts): `cravely.space`/`www` → landing page (`src/app/(marketing)/` — `/landing` rewritten to serve `/`, plus `/privacy`, `/terms`), `app.cravely.space` → consumer app (`src/app/(app)/` — home, restaurants, search, product, liked, maps, packages, profile, console pages). Only two API routes exist: `/api/my-ip`, `/api/upload`. Canonical origin for app metadata is `https://app.cravely.space` (`metadataBase` in `src/app/layout.tsx`; override hosts via `NEXT_PUBLIC_APP_URL` / `NEXT_PUBLIC_LANDING_URL`).
+- Routes: two hosts, one deployment, split by `src/proxy.ts` (Next 16 proxy convention, not middleware.ts): `cravely.space`/`www` → landing page (`src/app/(marketing)/` — `/landing` rewritten to serve `/`, plus `/privacy`, `/terms`), `app.cravely.space` → consumer app (`src/app/(app)/` — home, restaurants, search, product, liked, maps, packages, profile, console pages). API routes exist: `/api/health`, `/api/my-ip`, `/api/push`, `/api/upload`. Canonical origin for app metadata is `https://app.cravely.space` (`metadataBase` in `src/app/layout.tsx`; override hosts via `NEXT_PUBLIC_APP_URL` / `NEXT_PUBLIC_LANDING_URL`).
+- Maps: CARTO Voyager tiles with OpenStreetMap attribution (`src/lib/mapTiles.ts`), authenticated via `NEXT_PUBLIC_CARTO_API_KEY` using `?key=` query param across all Leaflet maps (`LocationMap`, `RestaurantsMap`, `LocationSetter`).
+- Versioning: `APP_VERSION` in `src/lib/site.ts` imports version from `package.json` and renders in app, marketing, and profile footers.
 - Deployed on Vercel; `vercel.json` 308-redirects `cravely-prod.vercel.app` and `cravely.zone.id` to `app.cravely.space`. If adding auth domains or new hosting domains, update `firebase.json` authorizedDomains and deploy rules/indexes via Firebase CLI.
 
 ## Conventions
 
 - `.agents/` contains vendored agent skills — eslint ignores it entirely; do not treat it as app code.
-- Env files are gitignored (`.env*`); `.env.example` documents only the Firebase vars, R2 vars are not listed there yet.
+- Env files are gitignored (`.env*`). Always keep `AGENTS.md` updated as architecture changes.

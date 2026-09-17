@@ -3,7 +3,8 @@ import SearchBar from "@/components/SearchBar";
 import ForYou from "@/components/home/ForYou";
 import HomeHeader from "@/components/home/HomeHeader";
 import HomeStories from "@/components/home/HomeStories";
-import { HomeOffers, HomeCuisines, HomeFoods } from "@/components/home/HomeSections";
+import HomeOffers from "@/components/home/OfferCarousel";
+import { HomeCuisines, HomeFoods } from "@/components/home/HomeSections";
 import Reveal from "@/components/home/Reveal";
 import {
   getAllFoods,
@@ -12,7 +13,7 @@ import {
   getCuisines,
   getStories,
 } from "@/lib/data";
-import { APP_URL } from "@/lib/site";
+import { APP_URL, APP_VERSION } from "@/lib/site";
 import { getSocialLinks, type SocialLinks } from "@/lib/social";
 
 export const revalidate = 60;
@@ -67,6 +68,9 @@ export default async function HomePage() {
         <SocialLinksFooter links={social} />
         <p className="text-sm text-text-light">
           © {new Date().getFullYear()} Cravely. All rights reserved.
+        </p>
+        <p className="text-[11px] text-text-light/60 mt-1.5 font-mono">
+          {APP_VERSION}
         </p>
       </footer>
     </div>

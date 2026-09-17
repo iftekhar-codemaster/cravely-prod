@@ -5,7 +5,7 @@ import type { Restaurant } from "@/lib/data";
 import { haversineKm } from "@/lib/geo";
 import { useUserLocation, type UserLocation } from "@/lib/useUserLocation";
 import { googleMapsConfigured, loadGoogleMaps } from "@/lib/googleMaps";
-import { TILE_URL, TILE_ATTRIBUTION } from "@/lib/mapTiles";
+import { TILE_URL, TILE_LAYER_OPTIONS } from "@/lib/mapTiles";
 
 function escapeHtml(value: string): string {
   return value
@@ -101,9 +101,7 @@ function OsmMap({ restaurants }: Props) {
         scrollWheelZoom: false,
         attributionControl: true,
       });
-      L.tileLayer(TILE_URL, {
-        attribution: TILE_ATTRIBUTION,
-      }).addTo(map);
+      L.tileLayer(TILE_URL, TILE_LAYER_OPTIONS).addTo(map);
 
       const group = L.featureGroup();
       for (const r of restaurants) {

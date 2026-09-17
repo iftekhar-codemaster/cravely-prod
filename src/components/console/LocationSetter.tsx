@@ -5,7 +5,7 @@ import { doc, updateDoc } from "firebase/firestore";
 import type { Map as LeafletMap, Marker, LeafletMouseEvent } from "leaflet";
 import { audit } from "@/lib/audit";
 import { getDb } from "@/lib/firebase";
-import { TILE_URL, TILE_ATTRIBUTION } from "@/lib/mapTiles";
+import { TILE_URL, TILE_LAYER_OPTIONS } from "@/lib/mapTiles";
 
 type Props = {
   restaurantId: string;
@@ -133,9 +133,7 @@ function MapModal({
         initialLat != null && initialLng != null ? [initialLat, initialLng] : [26.0333, 88.4667];
 
       const map = L.map(containerRef.current).setView(center, 13);
-      L.tileLayer(TILE_URL, {
-        attribution: TILE_ATTRIBUTION,
-      }).addTo(map);
+      L.tileLayer(TILE_URL, TILE_LAYER_OPTIONS).addTo(map);
 
       const icon = L.divIcon({
         html: '<div style="font-size:28px">📍</div>',
